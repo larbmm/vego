@@ -1,0 +1,33 @@
+{
+  "name": "vego-nodejs",
+  "version": "1.0.0",
+  "description": "Multi-character chatbot with layered memory system",
+  "main": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "test": "vitest"
+  },
+  "engines": {
+    "node": ">=18.0.0 <=22.0.0"
+  },
+  "dependencies": {
+    "discord.js": "^14.14.0",
+    "dotenv": "^16.3.1",
+    "node-cron": "^3.0.3",
+    "openai": "^4.52.0",
+    "better-sqlite3": "^11.0.0",
+    "telegraf": "^4.15.0",
+    "toml": "^3.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/node-cron": "^3.0.11",
+    "@types/better-sqlite3": "^7.6.8",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3",
+    "vitest": "^1.1.0"
+  }
+}
