@@ -1,0 +1,40 @@
+# Vego Configuration Example
+# Copy this file to ~/.vego/config.toml and fill in your values
+
+[api]
+key = "your-api-key"
+model = "Pro/moonshotai/Kimi-K2.5"
+base = "https://api.siliconflow.cn/v1"
+
+# Character Configuration
+# You can define multiple characters, each with their own workspace and bot tokens
+
+[character.yuyan]
+path = "workspace_yuyan"
+telegram_bot_token = "your-telegram-bot-token"
+discord_bot_token = "your-discord-bot-token"
+# feishu_app_id = "your-feishu-app-id"
+# feishu_app_secret = "your-feishu-app-secret"
+
+[character.yunxiu]
+path = "workspace_yunxiu"
+telegram_bot_token = "your-telegram-bot-token"
+# discord_bot_token = "your-discord-bot-token"
+
+# Memory Configuration
+[memory]
+max_history_messages = 100      # Maximum messages to load into context
+max_recent_messages = 100       # Messages to keep after compression
+compress_threshold = 300        # Trigger compression when message count reaches this
+
+# Scheduler Configuration
+[scheduler]
+enabled = true                  # Enable/disable daily memory consolidation
+schedule_time = "3:00"          # Time to run daily tasks (24-hour format)
+min_conversations = 20          # Minimum conversation rounds before processing
+
+# Weekly Review Configuration
+[weekly_review]
+enabled = true                  # Enable/disable weekly review
+day_of_week = 0                 # Day of week (0=Monday, 6=Sunday)
+schedule_time = "4:00"          # Time to run weekly review (24-hour format)
