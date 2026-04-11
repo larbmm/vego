@@ -38,12 +38,21 @@ export class GPTClient {
   }
 
   private async buildSystemPrompt(userId: number): Promise<string> {
-    console.debug(`[GPTClient] Building system prompt for user ${userId}`);
-
     const personaContent = this.loadPersona();
+    
+    // 添加当前时间信息
+    const now = new Date();
+    const timeInfo = `\n\n---\n当前时间：${now.toLocaleString('zh-CN', { 
+      timeZone: 'Asia/Shanghai',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      weekday: 'long'
+    })}\n---\n`;
 
-    console.debug(`[GPTClient] System prompt built, length: ${personaContent.length}`);
-    return personaContent;
+    return personaContent + timeInfo;
   }
 
   async chat(
@@ -51,8 +60,6 @@ export class GPTClient {
     userMessage: string,
     conversationHistory: Array<{ role: string; content: string }> = []
   ): Promise<string> {
-    console.debug(`[GPTClient] Starting chat for user ${userId}`);
-
     const systemPrompt = await this.buildSystemPrompt(userId);
 
     const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
@@ -64,8 +71,6 @@ export class GPTClient {
       { role: 'user', content: userMessage },
     ];
 
-    console.debug(`[GPTClient] Calling API with ${messages.length} messages`);
-
     try {
       const response = await this.client.chat.completions.create({
         model: this.model,
@@ -74,15 +79,12 @@ export class GPTClient {
         max_tokens: 500,
       });
 
-      console.debug('[GPTClient] API call successful');
-
       if (!response.choices || response.choices.length === 0) {
         throw new Error('No choices in response');
       }
 
       let reply = response.choices[0].message.content || '';
       if (!reply) {
-        console.warn('[GPTClient] Empty reply from API');
         reply = '...';
       }
 

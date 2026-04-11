@@ -135,18 +135,23 @@ export class DreamTask {
 
   private async processConversations(messages: any[], targetDate: Date): Promise<any> {
     const conversationsText = this.formatConversations(messages);
+    const existingMemories = this.loadExistingMemories();
 
     try {
       if (!this.client) {
         throw new Error('Client not initialized');
       }
 
+      const promptWithContext = this.dreamPrompt!
+        .replace('{conversations}', conversationsText)
+        .replace('{existing_memories}', existingMemories);
+
       const response = await this.client.chat.completions.create({
         model: this.character.apiModel,
         messages: [
           {
             role: 'system',
-            content: this.dreamPrompt!.replace('{conversations}', conversationsText),
+            content: promptWithContext,
           },
         ],
         temperature: 0.7,
@@ -159,6 +164,30 @@ export class DreamTask {
       console.error('[DreamTask] Error processing conversations:', error);
       return null;
     }
+  }
+
+  private loadExistingMemories(): string {
+    try {
+      const memoriesPath = path.join(this.character.workspacePath, 'memory', 'memories.md');
+      if (fs.existsSync(memoriesPath)) {
+        const content = fs.readFileSync(memoriesPath, 'utf-8');
+        // Extract just the bullet points
+        const facts = content
+          .split('\n')
+          .filter((line) => line.startsWith('- '))
+          .map((line) => line.substring(2))
+          .filter((fact) => fact && !['（空）', '（无重要信息需要记忆）', '（无重要信息需记忆）'].includes(fact));
+        
+        if (facts.length === 0) {
+          return '（暂无长期记忆）';
+        }
+        
+        return facts.map((fact, i) => `${i + 1}. ${fact}`).join('\n');
+      }
+    } catch (error) {
+      console.warn('[DreamTask] Failed to load existing memories');
+    }
+    return '（暂无长期记忆）';
   }
 
   private parseResponse(content: string): any {
@@ -185,9 +214,12 @@ export class DreamTask {
   }
 
   private formatConversations(messages: any[]): string {
+    // Try to get user name from relationship/user.md
+    const userName = this.getUserName();
+    
     return messages
       .map((msg) => {
-        const role = msg.role === 'user' ? '用户' : '我';
+        const role = msg.role === 'user' ? userName : '我';
         const time = new Date(msg.created_at).toLocaleTimeString('zh-CN', {
           hour: '2-digit',
           minute: '2-digit',
@@ -195,6 +227,24 @@ export class DreamTask {
         return `[${time}] ${role}: ${msg.content}`;
       })
       .join('\n');
+  }
+
+  private getUserName(): string {
+    try {
+      const userPath = path.join(this.character.workspacePath, 'relationship', 'user.md');
+      if (fs.existsSync(userPath)) {
+        const content = fs.readFileSync(userPath, 'utf-8');
+        // Try to extract name from "名字：xxx" or "姓名：xxx" pattern
+        const nameMatch = content.match(/(?:名字|姓名)[:：]\s*(.+)/);
+        if (nameMatch) {
+          return nameMatch[1].trim();
+        }
+      }
+    } catch (error) {
+      console.warn('[DreamTask] Failed to read user name, using default');
+    }
+    // Fallback to generic term
+    return '对方';
   }
 
   private async saveMemory(workspacePath: string, targetDate: Date, memoryResult: any): Promise<void> {

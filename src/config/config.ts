@@ -18,6 +18,14 @@ export interface WeeklyReviewConfig {
   schedule_time: string;
 }
 
+export interface ProactiveChatConfig {
+  enabled: boolean;
+  active_hours_start: number;
+  active_hours_end: number;
+  min_interval_hours: number;
+  random_probability: number;
+}
+
 export interface MemoryConfig {
   max_history_messages: number;
   max_recent_messages: number;
@@ -43,6 +51,7 @@ export interface Config {
   memory: MemoryConfig;
   scheduler: SchedulerConfig;
   weekly_review: WeeklyReviewConfig;
+  proactive_chat: ProactiveChatConfig;
 }
 
 function loadConfig(): Config {
@@ -74,6 +83,13 @@ function loadConfig(): Config {
       enabled: rawConfig.weekly_review?.enabled !== false,
       day_of_week: rawConfig.weekly_review?.day_of_week || 0,
       schedule_time: rawConfig.weekly_review?.schedule_time || '4:00',
+    },
+    proactive_chat: {
+      enabled: rawConfig.proactive_chat?.enabled !== false,
+      active_hours_start: rawConfig.proactive_chat?.active_hours_start || 6.5,
+      active_hours_end: rawConfig.proactive_chat?.active_hours_end || 22.5,
+      min_interval_hours: rawConfig.proactive_chat?.min_interval_hours || 2,
+      random_probability: rawConfig.proactive_chat?.random_probability || 0.3,
     },
   };
 

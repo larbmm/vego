@@ -100,9 +100,10 @@ export class DatabaseManager {
       }
     }
 
+    // Explicitly set created_at using datetime('now') to ensure timestamp is recorded
     this.db.prepare(`
-      INSERT INTO messages (user_id, role, content, platform, message_id)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT INTO messages (user_id, role, content, platform, message_id, created_at)
+      VALUES (?, ?, ?, ?, ?, datetime('now'))
     `).run(userId, role, content, platform, messageId || null);
   }
 
@@ -116,7 +117,9 @@ export class DatabaseManager {
       `)
       .all(userId, limit) as Message[];
 
-    return messages.reverse();
+    const reversed = messages.reverse();
+    
+    return reversed;
   }
 
   getMessageCount(userId: number): number {

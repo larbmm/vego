@@ -15,6 +15,11 @@ export class TelegramBot {
   async setup(token: string): Promise<void> {
     this.bot = new Telegraf(token);
 
+    // Add global error handler to suppress detailed error logs
+    this.bot.catch((err) => {
+      console.error(`[TelegramBot:${this.characterName}] Error processing update:`, err.message || err);
+    });
+
     this.bot.on('text', async (ctx: Context) => {
       try {
         if (!ctx.message || !('text' in ctx.message)) {
@@ -48,5 +53,9 @@ export class TelegramBot {
 
   stop(): void {
     this.bot.stop();
+  }
+
+  getBot(): Telegraf {
+    return this.bot;
   }
 }

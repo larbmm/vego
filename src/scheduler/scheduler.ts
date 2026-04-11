@@ -53,6 +53,21 @@ export class Scheduler {
     this.weeklyTasks.push({ task, dayOfWeek, time });
   }
 
+  addHourlyTask(task: ScheduledTask, hour: number, minute: number): void {
+    const cronExpression = `${minute} ${hour} * * *`;
+    const job = cron.schedule(cronExpression, async () => {
+      try {
+        const result = await task(this.state);
+        this.state = { ...this.state, ...result };
+        this.saveState();
+      } catch (error) {
+        console.error('[Scheduler] Hourly task failed:', error);
+      }
+    });
+    this.jobs.push(job);
+    job.start();
+  }
+
   async start(): Promise<void> {
     console.log('[Scheduler] Starting scheduler...');
 
