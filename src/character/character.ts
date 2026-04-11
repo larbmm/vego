@@ -16,6 +16,15 @@ export class Character {
   gptClient?: GPTClient;
   router?: MessageRouter;
 
+  // Message batching per user
+  private userBatches: Map<number, {
+    messages: UnifiedMessage[];
+    timer: NodeJS.Timeout | null;
+    processing: boolean;
+  }> = new Map();
+
+  private readonly BATCH_DELAY = 2000; // 2 seconds to wait for more messages
+
   constructor(
     name: string,
     workspacePath: string,
@@ -57,28 +66,81 @@ export class Character {
 
       const user = this.memoryManager.getOrCreateUser(message.platform);
 
-      const history = this.memoryManager.getConversationHistory(user.id);
+      // Get or create batch for this user
+      let batch = this.userBatches.get(user.id);
+      if (!batch) {
+        batch = { messages: [], timer: null, processing: false };
+        this.userBatches.set(user.id, batch);
+      }
+
+      // If already processing, queue this message
+      if (batch.processing) {
+        return new Promise((resolve) => {
+          batch!.messages.push(message);
+          
+          // Clear existing timer
+          if (batch!.timer) {
+            clearTimeout(batch!.timer);
+          }
+
+          // Set new timer to process batch
+          batch!.timer = setTimeout(() => {
+            this.processBatch(user.id).then(resolve).catch(() => resolve(''));
+          }, this.BATCH_DELAY);
+        });
+      }
+
+      // Start processing
+      batch.processing = true;
+      batch.messages.push(message);
+
+      // Wait a bit for more messages
+      await new Promise(resolve => setTimeout(resolve, this.BATCH_DELAY));
+
+      return await this.processBatch(user.id);
+    } catch (error) {
+      console.error(`[ERROR] ${this.name} handle_message:`, error);
+      return `Error: ${error instanceof Error ? error.message : String(error)}`;
+    }
+  }
+
+  private async processBatch(userId: number): Promise<string> {
+    const batch = this.userBatches.get(userId);
+    if (!batch || batch.messages.length === 0) {
+      return '';
+    }
+
+    try {
+      // Combine all messages
+      const combinedContent = batch.messages.map(m => m.content).join('\n');
+      const lastMessage = batch.messages[batch.messages.length - 1];
+
+      const history = this.memoryManager!.getConversationHistory(userId);
       const historyDict = history.map((msg) => ({
         role: msg.role,
         content: msg.content,
       }));
 
-      const response = await this.gptClient.chat(user.id, message.content, historyDict);
+      const response = await this.gptClient!.chat(userId, combinedContent, historyDict);
 
-      this.memoryManager.storeMessage(
-        user.id,
-        'user',
-        message.content,
-        message.platform,
-        message.platform_message_id
-      );
+      // Store all user messages
+      for (const msg of batch.messages) {
+        this.memoryManager!.storeMessage(
+          userId,
+          'user',
+          msg.content,
+          msg.platform,
+          msg.platform_message_id
+        );
+      }
 
-      await this.saveResponse(user.id, response, message);
+      // Store single response
+      await this.saveResponse(userId, response, lastMessage);
 
       return response;
-    } catch (error) {
-      console.error(`[ERROR] ${this.name} handle_message:`, error);
-      return `Error: ${error instanceof Error ? error.message : String(error)}`;
+    } finally {
+      // Clean up batch
+      this.userBatches.delete(userId);
     }
   }
 

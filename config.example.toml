@@ -38,3 +38,12 @@ min_conversations = 20          # Minimum conversation rounds before processing
 enabled = true                  # Enable/disable weekly review
 day_of_week = 0                 # Day of week (0=Monday, 6=Sunday)
 schedule_time = "4:00"          # Time to run weekly review (24-hour format)
+
+# Proactive Chat Configuration
+[proactive_chat]
+enabled = true                  # Enable/disable proactive chat
+active_hours_start = 6.5        # Start time (6.5 = 6:30 AM)
+active_hours_end = 22.5         # End time (22.5 = 10:30 PM)
+min_interval_hours = 2          # Minimum hours between proactive messages
+# Random trigger: will check every hour and randomly decide whether to send
+random_probability = 0.3        # 30% chance to send when checked

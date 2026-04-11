@@ -93,6 +93,49 @@ export class PersonaBotApp {
         console.log(`✓ Weekly review task added for '${charName}'`);
       }
     }
+
+    // Setup proactive chat tasks
+    if (config.proactive_chat.enabled) {
+      this.setupProactiveChatTasks();
+    }
+  }
+
+  private setupProactiveChatTasks(): void {
+    // Schedule hourly checks for proactive chat
+    for (const [charName, char] of this.characters) {
+      // Find telegram bot for this character
+      const charConfig = Object.values(config.character).find(c => c.name === charName);
+      if (!charConfig?.telegram_bot_token) {
+        continue;
+      }
+
+      const tgBot = this.telegramBots.get(charConfig.telegram_bot_token);
+      if (!tgBot) {
+        continue;
+      }
+
+      // Import and create proactive chat task
+      import('./scheduler/proactive-chat-task.js').then(({ ProactiveChatTask }) => {
+        const proactiveTask = new ProactiveChatTask(
+          char,
+          tgBot.getBot(),
+          config.proactive_chat
+        );
+
+        // Add hourly task with random probability
+        for (let hour = Math.floor(config.proactive_chat.active_hours_start); 
+             hour <= Math.floor(config.proactive_chat.active_hours_end); 
+             hour++) {
+          this.scheduler!.addHourlyTask(
+            proactiveTask.call.bind(proactiveTask),
+            hour,
+            0 // Run at the start of each hour
+          );
+        }
+
+        console.log(`✓ Proactive chat task added for '${charName}'`);
+      });
+    }
   }
 
   async run(): Promise<void> {
