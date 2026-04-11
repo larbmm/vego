@@ -52,7 +52,12 @@ export class PersonaBotApp {
       // Setup Discord bot
       if (charConfig.discord_bot_token) {
         const dcBot = new DiscordBot(char.handleMessage.bind(char), charName);
-        await dcBot.setup(charConfig.discord_bot_token);
+        await dcBot.setup(
+          charConfig.discord_bot_token,
+          config.api.key,
+          config.api.base,
+          config.api.model
+        );
         this.discordBots.set(charConfig.discord_bot_token, dcBot);
         this.tokenToCharacter.set(charConfig.discord_bot_token, char);
       }
