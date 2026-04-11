@@ -21,7 +21,6 @@ export class TelegramBot {
     // Get bot info to know the actual username
     const botInfo = await this.bot.telegram.getMe();
     const botUsername = botInfo.username;
-    console.log(`[TelegramBot:${this.characterName}] Bot username: @${botUsername}`);
 
     // Initialize group participation if API credentials provided
     if (apiKey && apiBase && model) {
@@ -53,8 +52,6 @@ export class TelegramBot {
         const chatId = String(ctx.chat?.id || '');
         const senderName = ctx.from?.first_name || ctx.from?.username || 'Unknown';
 
-        console.log(`[TelegramBot:${this.characterName}] Received message from ${senderName} in ${isGroup ? 'group' : 'private'}: ${ctx.message.text.substring(0, 50)}`);
-
         // Check if message mentions this bot (using actual bot username or character name)
         // Also check for Chinese character names in the message
         const characterNameVariations = [
@@ -81,8 +78,6 @@ export class TelegramBot {
 
         // Check if it's a reply to this bot's message
         const isReplyToMe = ctx.message?.reply_to_message?.from?.id === botInfo.id;
-
-        console.log(`[TelegramBot:${this.characterName}] mentionsMe: ${mentionsMe}, isReplyToMe: ${isReplyToMe}`);
 
         // For group chats, check if should respond
         if (isGroup && this.groupParticipation) {
@@ -134,18 +129,13 @@ export class TelegramBot {
           );
 
           if (!decision.shouldRespond) {
-            console.info(`[TelegramBot:${this.characterName}] Skipping: ${decision.reason}`);
             return;
           }
-
-          console.info(`[TelegramBot:${this.characterName}] Responding: ${decision.reason}`);
         } else if (isGroup) {
           // No group participation logic, skip group messages unless mentioned/replied
           if (!mentionsMe && !isReplyToMe) {
-            console.info(`[TelegramBot:${this.characterName}] Skipping: Not mentioned in group`);
             return;
           }
-          console.info(`[TelegramBot:${this.characterName}] Responding: Mentioned or replied to`);
         }
 
         const message: UnifiedMessage = {
@@ -156,12 +146,8 @@ export class TelegramBot {
           timestamp: new Date(),
         };
 
-        console.log(`[TelegramBot:${this.characterName}] Calling handler...`);
         const response = await this.handler(message);
-        console.log(`[TelegramBot:${this.characterName}] Got response: ${response.substring(0, 50)}...`);
-        
         await ctx.reply(response);
-        console.log(`[TelegramBot:${this.characterName}] Reply sent successfully`);
 
         // Store bot's response in recent messages
         if (isGroup && this.recentGroupMessages.has(chatId)) {
