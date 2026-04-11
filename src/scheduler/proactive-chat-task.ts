@@ -63,6 +63,11 @@ export class ProactiveChatTask {
         .prepare('SELECT platform_user_id FROM users WHERE id = ? AND platform = ?')
         .get(userId, 'telegram') as { platform_user_id: string } | undefined;
       
+      // Skip if it's a group chat (contains @)
+      if (result?.platform_user_id && result.platform_user_id.includes('@')) {
+        return null;
+      }
+      
       return result?.platform_user_id || null;
     } catch (error) {
       console.error('[ProactiveChatTask] Error getting telegram ID:', error);

@@ -26,6 +26,12 @@ export interface ProactiveChatConfig {
   random_probability: number;
 }
 
+export interface GroupChatConfig {
+  use_ai_judgment: boolean;
+  question_response_probability: number;
+  normal_response_probability: number;
+}
+
 export interface MemoryConfig {
   max_history_messages: number;
   max_recent_messages: number;
@@ -52,6 +58,7 @@ export interface Config {
   scheduler: SchedulerConfig;
   weekly_review: WeeklyReviewConfig;
   proactive_chat: ProactiveChatConfig;
+  group_chat: GroupChatConfig;
 }
 
 function loadConfig(): Config {
@@ -90,6 +97,11 @@ function loadConfig(): Config {
       active_hours_end: rawConfig.proactive_chat?.active_hours_end || 22.5,
       min_interval_hours: rawConfig.proactive_chat?.min_interval_hours || 2,
       random_probability: rawConfig.proactive_chat?.random_probability || 0.3,
+    },
+    group_chat: {
+      use_ai_judgment: rawConfig.group_chat?.use_ai_judgment !== false,
+      question_response_probability: rawConfig.group_chat?.question_response_probability || 0.6,
+      normal_response_probability: rawConfig.group_chat?.normal_response_probability || 0.2,
     },
   };
 

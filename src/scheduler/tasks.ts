@@ -263,12 +263,25 @@ export class DreamTask {
   private saveDiary(memoryDir: string, targetDate: Date, diaryContent: string): void {
     if (!diaryContent) return;
 
-    const dateStr = targetDate.toISOString().split('T')[0];
-    const diaryPath = path.join(memoryDir, `${dateStr}.md`);
-    const header = `# 日记 - ${targetDate.toLocaleDateString('zh-CN')}\n\n`;
+    const diaryPath = path.join(memoryDir, 'diary.md');
+    const dateStr = targetDate.toLocaleDateString('zh-CN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+    
+    const entry = `## ${dateStr}\n\n${diaryContent}\n\n`;
 
-    fs.writeFileSync(diaryPath, header + diaryContent + '\n', 'utf-8');
-    console.info(`[DreamTask] Diary saved to ${diaryPath}`);
+    // Append to diary file
+    if (fs.existsSync(diaryPath)) {
+      fs.appendFileSync(diaryPath, entry, 'utf-8');
+    } else {
+      // Create new file with header
+      const header = '# 日记\n\n';
+      fs.writeFileSync(diaryPath, header + entry, 'utf-8');
+    }
+    
+    console.info(`[DreamTask] Diary entry added to ${diaryPath}`);
   }
 
   private updateRecall(memoryDir: string, targetDate: Date, summary: string): void {
