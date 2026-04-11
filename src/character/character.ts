@@ -64,7 +64,8 @@ export class Character {
         throw new Error('Character not initialized');
       }
 
-      const user = this.memoryManager.getOrCreateUser(message.platform);
+      // Use user_id instead of platform to identify users
+      const user = this.memoryManager.getOrCreateUser(message.user_id);
 
       // Check if it's a group chat (user_id contains @)
       const isGroup = message.user_id.includes('@');
