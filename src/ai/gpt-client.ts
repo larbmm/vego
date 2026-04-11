@@ -99,11 +99,24 @@ export class GPTClient {
 
       return reply;
     } catch (error: any) {
+      console.error('[GPTClient] API call failed:', error);
+      console.error('[GPTClient] Model:', this.model);
+      console.error('[GPTClient] API Base:', this.client.baseURL);
+      console.error('[GPTClient] Error details:', {
+        status: error?.status,
+        message: error?.message,
+        type: error?.type,
+        code: error?.code,
+      });
+      
       if (error?.code === 'ETIMEDOUT' || error?.message?.includes('timeout')) {
-        console.error('[GPTClient] API request timed out');
         throw new Error('API 请求超时，请稍后重试');
       }
-      console.error('[GPTClient] API call failed:', error);
+      
+      if (error?.status === 403) {
+        throw new Error('API 权限错误：可能是余额不足、模型不可用或 API key 无效');
+      }
+      
       throw error;
     }
   }
