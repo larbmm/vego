@@ -39,7 +39,12 @@ export class PersonaBotApp {
       // Setup Telegram bot
       if (charConfig.telegram_bot_token) {
         const tgBot = new TelegramBot(char.handleMessage.bind(char), charName);
-        await tgBot.setup(charConfig.telegram_bot_token);
+        await tgBot.setup(
+          charConfig.telegram_bot_token,
+          config.api.key,
+          config.api.base,
+          config.api.model
+        );
         this.telegramBots.set(charConfig.telegram_bot_token, tgBot);
         this.tokenToCharacter.set(charConfig.telegram_bot_token, char);
       }

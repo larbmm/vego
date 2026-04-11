@@ -66,7 +66,15 @@ export class Character {
 
       const user = this.memoryManager.getOrCreateUser(message.platform);
 
-      // Get or create batch for this user
+      // Check if it's a group chat (user_id contains @)
+      const isGroup = message.user_id.includes('@');
+
+      // Skip batching for group chats
+      if (isGroup) {
+        return await this.processMessage(user.id, message);
+      }
+
+      // Get or create batch for this user (private chat only)
       let batch = this.userBatches.get(user.id);
       if (!batch) {
         batch = { messages: [], timer: null, processing: false };
@@ -102,6 +110,28 @@ export class Character {
       console.error(`[ERROR] ${this.name} handle_message:`, error);
       return `Error: ${error instanceof Error ? error.message : String(error)}`;
     }
+  }
+
+  private async processMessage(userId: number, message: UnifiedMessage): Promise<string> {
+    const history = this.memoryManager!.getConversationHistory(userId);
+    const historyDict = history.map((msg) => ({
+      role: msg.role,
+      content: msg.content,
+    }));
+
+    const response = await this.gptClient!.chat(userId, message.content, historyDict);
+
+    this.memoryManager!.storeMessage(
+      userId,
+      'user',
+      message.content,
+      message.platform,
+      message.platform_message_id
+    );
+
+    await this.saveResponse(userId, response, message);
+
+    return response;
   }
 
   private async processBatch(userId: number): Promise<string> {
