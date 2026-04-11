@@ -1,27 +1,137 @@
 import { Client, GatewayIntentBits, Message as DiscordMessage } from 'discord.js';
 import { UnifiedMessage, MessageHandler } from '../router/message.js';
+import { GroupParticipation, GroupMessage } from './group-participation.js';
 
 export class DiscordBot {
   private client: Client;
   private handler: MessageHandler;
   private characterName: string;
+  private groupParticipation?: GroupParticipation;
+  private recentGroupMessages: Map<string, GroupMessage[]> = new Map();
+  private botId: string = '';
 
   constructor(handler: MessageHandler, characterName: string) {
     this.handler = handler;
     this.characterName = characterName;
     this.client = new Client({
-      intents: [GatewayIntentBits.Guilds, GatewayIntentBits.DirectMessages, GatewayIntentBits.MessageContent],
+      intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.DirectMessages,
+        GatewayIntentBits.MessageContent,
+      ],
     });
   }
 
-  async setup(token: string): Promise<void> {
+  async setup(token: string, apiKey?: string, apiBase?: string, model?: string): Promise<void> {
+    // Initialize group participation if API credentials provided
+    if (apiKey && apiBase && model) {
+      const { config } = await import('../config/config.js');
+      this.groupParticipation = new GroupParticipation(
+        apiKey,
+        apiBase,
+        model,
+        this.characterName,
+        config.group_chat.use_ai_judgment
+      );
+    }
+
+    this.client.on('ready', () => {
+      this.botId = this.client.user?.id || '';
+      console.log(`[DiscordBot:${this.characterName}] Logged in as ${this.client.user?.tag}`);
+    });
+
     this.client.on('messageCreate', async (msg: DiscordMessage) => {
       if (msg.author.bot) return;
 
       try {
+        const isGuild = msg.guild !== null;
+        const userId = msg.author.id;
+        const channelId = msg.channel.id;
+        const senderName = msg.author.username;
+
+        // Check if message mentions this bot
+        const chineseNameMap: Record<string, string> = {
+          'qianqian': '芊芊',
+          'wanqing': '婉清',
+          'xiyue': '曦月',
+        };
+
+        const characterNameVariations = [
+          this.characterName,
+          this.characterName.toLowerCase(),
+        ];
+
+        if (chineseNameMap[this.characterName.toLowerCase()]) {
+          characterNameVariations.push(chineseNameMap[this.characterName.toLowerCase()]);
+        }
+
+        const mentionsMe = msg.mentions.users.has(this.botId) ||
+          characterNameVariations.some(name => msg.content.includes(name));
+
+        const isReplyToMe = msg.reference?.messageId
+          ? (await msg.channel.messages.fetch(msg.reference.messageId)).author.id === this.botId
+          : false;
+
+        // For guild (server) messages, check if should respond
+        if (isGuild && this.groupParticipation) {
+          if (!this.recentGroupMessages.has(channelId)) {
+            this.recentGroupMessages.set(channelId, []);
+          }
+          const recentMessages = this.recentGroupMessages.get(channelId)!;
+
+          const groupMessage: GroupMessage = {
+            sender: senderName,
+            content: msg.content,
+            timestamp: new Date(),
+            mentionsMe,
+            isReplyToMe,
+          };
+
+          recentMessages.push(groupMessage);
+          if (recentMessages.length > 10) {
+            recentMessages.shift();
+          }
+
+          const { config } = await import('../config/config.js');
+
+          let characterPersona = '';
+          if (config.group_chat.use_ai_judgment) {
+            try {
+              const { WorkspaceLoader } = await import('../ai/workspace-loader.js');
+              const workspacePath = (this.handler as any).character?.workspacePath;
+              if (workspacePath) {
+                const loader = new WorkspaceLoader(workspacePath);
+                characterPersona = loader.loadPersona();
+              }
+            } catch (error) {
+              console.warn('[DiscordBot] Failed to load persona for AI judgment');
+            }
+          }
+
+          const decision = await this.groupParticipation.shouldRespond(
+            groupMessage,
+            recentMessages.slice(0, -1),
+            {
+              questionProbability: config.group_chat.question_response_probability,
+              normalProbability: config.group_chat.normal_response_probability,
+              characterPersona,
+            }
+          );
+
+          if (!decision.shouldRespond) {
+            return;
+          }
+        } else if (isGuild) {
+          // No group participation logic, skip guild messages unless mentioned/replied
+          if (!mentionsMe && !isReplyToMe) {
+            return;
+          }
+        }
+
         const message: UnifiedMessage = {
           platform: 'discord',
-          user_id: msg.author.id,
+          user_id: isGuild ? `${userId}@${channelId}` : userId,
           platform_message_id: msg.id,
           content: msg.content,
           timestamp: new Date(),
@@ -29,9 +139,22 @@ export class DiscordBot {
 
         const response = await this.handler(message);
         await msg.reply(response);
+
+        // Store bot's response in recent messages
+        if (isGuild && this.recentGroupMessages.has(channelId)) {
+          this.recentGroupMessages.get(channelId)!.push({
+            sender: this.characterName,
+            content: response,
+            timestamp: new Date(),
+          });
+        }
       } catch (error) {
         console.error(`[DiscordBot:${this.characterName}] Error:`, error);
-        await msg.reply('Sorry, an error occurred.');
+        try {
+          await msg.reply('抱歉，出现了一些问题...');
+        } catch (replyError) {
+          console.error(`[DiscordBot:${this.characterName}] Failed to send error reply:`, replyError);
+        }
       }
     });
 
@@ -39,7 +162,7 @@ export class DiscordBot {
   }
 
   async run(): Promise<void> {
-    console.log(`[DiscordBot:${this.characterName}] Running...`);
+    console.log(`[DiscordBot:${this.characterName}] Starting...`);
     // Client is already running after login
   }
 
