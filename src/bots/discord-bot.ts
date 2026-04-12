@@ -41,6 +41,13 @@ export class DiscordBot {
       console.log(`[DiscordBot:${this.characterName}] Logged in as ${this.client.user?.tag}`);
     });
 
+    // Also listen to clientReady for future compatibility
+    if ('clientReady' in this.client) {
+      (this.client as any).on('clientReady', () => {
+        this.botId = this.client.user?.id || '';
+      });
+    }
+
     this.client.on('messageCreate', async (msg: DiscordMessage) => {
       if (msg.author.bot) return;
 
