@@ -2,114 +2,51 @@
 
 基于 Node.js 和 TypeScript 的多角色聊天机器人，支持分层记忆系统和多平台接入。
 
-## 特性
+## ✨ 特性
 
 - 🤖 **多角色管理** - 支持多个独立的聊天机器人角色，每个角色有独立的人设和记忆
-- 💬 **多平台支持** - Telegram、Discord、飞书三个平台
-- 🧠 **分层记忆系统** - 包括身份认同、关系信息、长期记忆、关系图式、当前状态、情景记忆和对话历史
-- 📁 **Workspace 文件系统** - 每个角色有独立的 workspace 目录，包含 persona/、relationship/、memory/ 等 Markdown 文件
-- 🤖 **GPT API 集成** - 调用 OpenAI 兼容 API 生成回复
-- ⏰ **定时任务系统** - 每日凌晨记忆整理和每周审视
-- 💾 **对话压缩** - 当消息数达到阈值时自动压缩保留最近消息
-- ⚙️ **配置管理** - 使用 TOML 配置文件管理 API、角色、记忆、调度器等配置
+- 💬 **多平台支持** - Telegram、Discord 双平台，支持私聊和群聊
+- 👥 **智能群聊** - AI 判断是否参与对话，支持中文名字识别、@提及、回复检测
+- 🧠 **分层记忆系统** - 包括身份认同、关系信息、长期记忆、关系图式、当前状态和对话历史
+- � **自动日记** - 每天凌晨自动整理对话，生成日记和记忆
+- �📁 **Workspace 文件系统** - 每个角色有独立的 workspace 目录，使用 Markdown 文件管理人设
+- 🤖 **GPT API 集成** - 支持 OpenAI 兼容 API（硅基流动、Kimi 等）
+- ⏰ **定时任务系统** - 每日记忆整理和每周回顾
+- 💾 **对话压缩** - 自动压缩历史消息，节省 token
+- ⚙️ **配置管理** - 使用 TOML 配置文件，简单易用
 
-## 项目结构
+## 🚀 快速开始
 
-```
-src/
-├── index.ts              # 主程序入口
-├── app.ts                # 应用程序主类
-├── config/
-│   └── config.ts         # 配置解析
-├── character/
-│   └── character.ts      # Character 类，管理单个角色
-├── ai/
-│   ├── workspace-loader.ts  # workspace 文件加载
-│   └── gpt-client.ts        # GPT 客户端
-├── bots/
-│   ├── telegram-bot.ts   # Telegram bot
-│   ├── discord-bot.ts    # Discord bot
-│   └── feishu-bot.ts     # 飞书 bot
-├── memory/
-│   ├── database.ts       # 数据库管理
-│   └── memory-manager.ts # 记忆管理器
-├── scheduler/
-│   ├── scheduler.ts      # 定时任务调度器
-│   └── tasks.ts          # 记忆整理任务
-└── router/
-    └── message.ts        # UnifiedMessage 消息结构
-```
-
-## Workspace 标准结构
-
-每个角色的 workspace 目录结构如下：
-
-```
-workspace_{角色名}/
-├── index.md              # 入口文件，引用所有模块
-│
-├── persona/              # 身份认同层（手动维护）
-│   ├── basic.md          # 基本信息：名字、年龄、身份
-│   ├── personality.md    # 性格特点、情绪节奏
-│   ├── background.md     # 背景故事
-│   ├── interests.md      # 兴趣爱好
-│   ├── speaking.md       # 说话风格
-│   └── rules.md          # 行为规则
-│
-├── relationship/         # 关系层（手动维护）
-│   └── user.md           # 用户信息
-│
-└── memory/               # 记忆层（自动生成 + 配置）
-    ├── dream_prompt.md   # 记忆整理提示词（可自定义）
-    ├── recall.md         # 近期记忆（自动生成）
-    ├── state.md          # 当前状态（自动生成）
-    ├── relationship.md   # 关系图式（自动生成）
-    └── weekly_review.md  # 周审视报告（自动生成）
-```
-
-## 安装
-
-### 前置要求
-
-- **Node.js 18-22** (推荐使用 v20 LTS 或 v22 LTS)
-- npm 或 pnpm
-- 一个 OpenAI 兼容的 API key
-
-**重要**: 如果你使用 Node.js v24，可能会遇到编译错误。请参考 [INSTALL.md](INSTALL.md) 解决。
+### 安装
 
 ```bash
-# 检查 Node.js 版本
-node -v
-
-# 如果是 v24，建议降级到 v20 或 v22
-nvm install 20
-nvm use 20
+# 克隆项目
+git clone <your-repo-url>
+cd vego
 
 # 安装依赖
 npm install
+
+# 编译
+npm run build
 ```
 
-## 配置
+### 配置
 
-配置文件位于 `~/.vego/config.toml`：
+创建配置文件 `~/.vego/config.toml`（Windows: `C:\Users\你的用户名\.vego\config.toml`）：
 
 ```toml
 [api]
 key = "your-api-key"
-model = "Pro/moonshotai/Kimi-K2.5"
-base = "https://api.siliconflow.cn/v1"
+model = "deepseek-chat"  # 或其他模型
+base = "https://api.deepseek.com/v1"
 
-[character.yuyan]
-path = "workspace_yuyan"
-telegram_bot_token = "xxx"
-discord_bot_token = "xxx"
-
-[character.yunxiu]
-path = "workspace_yunxiu"
-telegram_bot_token = "xxx"
+[character.qianqian]
+path = "workspace_qianqian"
+discord_bot_token = "your-discord-bot-token"
 
 [memory]
-max_history_messages = 100
+max_history_messages = 20  # 减少 token 消耗
 max_recent_messages = 100
 compress_threshold = 300
 
@@ -118,23 +55,75 @@ enabled = true
 schedule_time = "3:00"
 min_conversations = 20
 
-[weekly_review]
-enabled = true
-day_of_week = 0
-schedule_time = "4:00"
+[group_chat]
+use_ai_judgment = false  # 使用规则判断，省 token
+question_response_probability = 0.6
+normal_response_probability = 0.2
 ```
 
-## 运行
+### 运行
 
 ```bash
-# 开发模式（带热重载）
+# 开发模式
 npm run dev
-
-# 构建
-npm run build
 
 # 生产模式
 npm start
+```
+
+## 📚 群聊功能
+
+### Telegram 群聊设置
+
+1. 将 bot 添加到群组
+2. 找到 @BotFather，发送 `/mybots`
+3. 选择你的 bot → `Bot Settings` → `Group Privacy` → `Turn off`
+4. 现在 bot 可以看到群里的所有消息了
+
+### 群聊响应规则
+
+Bot 会在以下情况下回复：
+
+✅ **必定回复**：
+- 被 @提及（`@bot_username`）
+- 消息中包含角色名字（如"芊芊"、"婉清"）
+- 回复 bot 的消息
+
+🎲 **可能回复**（根据配置概率）：
+- 问题（包含问号）
+- 以"你们"、"大家"开头的消息
+- 包含"你们俩"、"你俩"等词
+
+❌ **不会回复**：
+- 刚说过话（避免刷屏）
+- 消息太短（<3 字符）
+- 只有 emoji
+
+## 🗂️ Workspace 结构
+
+```
+.vego/
+├── config.toml           # 配置文件
+├── workspace_qianqian/   # 芊芊的 workspace
+│   ├── index.md          # 入口文件
+│   ├── persona/          # 人设文件
+│   │   ├── basic.md      # 基本信息
+│   │   ├── personality.md # 性格特点
+│   │   ├── background.md  # 背景故事
+│   │   ├── interests.md   # 兴趣爱好
+│   │   ├── speaking.md    # 说话风格
+│   │   └── rules.md       # 行为规则
+│   ├── relationship/      # 关系信息
+│   │   └── user.md        # 用户信息
+│   ├── memory/            # 记忆文件（自动生成）
+│   │   ├── diary.md       # 日记（每天追加）
+│   │   ├── memories.md    # 长期记忆
+│   │   ├── recall.md      # 近期记忆
+│   │   ├── state.md       # 当前状态
+│   │   └── relationship.md # 关系变化
+│   └── memory.db          # 对话数据库
+└── workspace_wanqing/     # 婉清的 workspace
+    └── ...
 ```
 
 ## 核心流程
@@ -210,18 +199,10 @@ AI 分析对话 → 识别信息属于哪一层
 - **TypeScript** - 类型安全的 JavaScript
 - **better-sqlite3** - SQLite 数据库
 - **OpenAI SDK** - GPT API 客户端
-- **Telegraf** - Telegram Bot 框架
 - **Discord.js** - Discord Bot 框架
+- **Telegraf** - Telegram Bot 框架
 - **node-cron** - 定时任务调度
 - **toml** - TOML 配置解析
-
-## 从 Python 版本迁移
-
-如果你有现有的 Python 版本 vego 项目：
-
-1. 配置文件 `~/.vego/config.toml` 可以直接使用
-2. Workspace 目录结构完全兼容
-3. 数据库结构相同，可以直接使用现有的 `memory.db`
 
 ## 开发
 
@@ -248,7 +229,7 @@ MIT
 
 - 从 Python 版本迁移到 Node.js/TypeScript
 - 完整实现多角色管理和分层记忆系统
-- 支持 Telegram、Discord、飞书三个平台
+- 支持 Discord、Telegram、飞书三个平台
 - 实现每日记忆整理和每周审视功能
 - 使用 better-sqlite3 替代 SQLAlchemy
 - 使用 node-cron 替代 Python 的 schedule

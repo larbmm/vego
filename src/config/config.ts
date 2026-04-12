@@ -2,8 +2,33 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as toml from 'toml';
 import * as os from 'os';
+import { fileURLToPath } from 'url';
 
-const VEGO_HOME = path.join(os.homedir(), '.vego');
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Try to find .vego directory in multiple locations
+function findVegoHome(): string {
+  const locations = [
+    path.join(os.homedir(), '.vego'),           // ~/.vego (优先)
+    path.join(process.cwd(), '.vego'),          // 当前工作目录/.vego
+    path.join(__dirname, '..', '..', '.vego'),  // 项目根目录/.vego
+  ];
+
+  for (const location of locations) {
+    if (fs.existsSync(location)) {
+      console.log(`[Config] Using .vego directory: ${location}`);
+      return location;
+    }
+  }
+
+  // If not found, use home directory as default
+  const defaultLocation = locations[0];
+  console.warn(`[Config] .vego directory not found, using default: ${defaultLocation}`);
+  return defaultLocation;
+}
+
+const VEGO_HOME = findVegoHome();
 const CONFIG_PATH = path.join(VEGO_HOME, 'config.toml');
 
 export interface SchedulerConfig {
