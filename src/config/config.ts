@@ -151,7 +151,3 @@ export const config = loadConfig();
 export function getWorkspacePath(charConfig: CharacterConfig): string {
   return path.join(VEGO_HOME, charConfig.path);
 }
-
-export function getDatabasePath(charConfig: CharacterConfig): string {
-  return path.join(getWorkspacePath(charConfig), 'memory.db');
-}
