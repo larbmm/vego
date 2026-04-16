@@ -28,7 +28,7 @@ export class Character {
   constructor(
     name: string,
     workspacePath: string,
-    databasePath: string,
+    storagePath: string,
     apiKey: string,
     apiBase: string,
     apiModel: string,
@@ -36,7 +36,7 @@ export class Character {
   ) {
     this.name = name;
     this.workspacePath = workspacePath;
-    this.databasePath = databasePath;
+    this.databasePath = storagePath;
     this.apiKey = apiKey;
     this.apiBase = apiBase;
     this.apiModel = apiModel;
@@ -118,6 +118,7 @@ export class Character {
     const historyDict = history.map((msg) => ({
       role: msg.role,
       content: msg.content,
+      created_at: msg.created_at,
     }));
 
     const response = await this.gptClient!.chat(userId, message.content, historyDict);
@@ -150,6 +151,7 @@ export class Character {
       const historyDict = history.map((msg) => ({
         role: msg.role,
         content: msg.content,
+        created_at: msg.created_at,
       }));
 
       const response = await this.gptClient!.chat(userId, combinedContent, historyDict);

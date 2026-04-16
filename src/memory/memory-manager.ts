@@ -1,17 +1,17 @@
-import { DatabaseManager, Message, User } from './database.js';
+import { JsonlStorage, Message, User } from './jsonl-storage.js';
 import { MemoryConfig } from '../config/config.js';
 
 export class MemoryManager {
-  private db: DatabaseManager;
+  private storage: JsonlStorage;
   private memoryConfig: MemoryConfig;
 
-  constructor(dbPath: string, memoryConfig: MemoryConfig) {
-    this.db = new DatabaseManager(dbPath);
+  constructor(storagePath: string, memoryConfig: MemoryConfig) {
+    this.storage = new JsonlStorage(storagePath);
     this.memoryConfig = memoryConfig;
   }
 
   getOrCreateUser(platform: string): User {
-    return this.db.getOrCreateUser(platform);
+    return this.storage.getOrCreateUser(platform);
   }
 
   storeMessage(
@@ -21,30 +21,30 @@ export class MemoryManager {
     platform: string,
     messageId: string = ''
   ): void {
-    this.db.storeMessage(userId, role, content, platform, messageId);
+    this.storage.storeMessage(userId, role, content, platform, messageId);
   }
 
   getConversationHistory(userId: number): Message[] {
-    return this.db.getConversationHistory(userId, this.memoryConfig.max_history_messages);
+    return this.storage.getConversationHistory(userId, this.memoryConfig.max_history_messages);
   }
 
   shouldCompress(userId: number): boolean {
-    return this.db.shouldCompress(userId);
+    return this.storage.shouldCompress(userId);
   }
 
   compressConversation(userId: number): number {
-    return this.db.compressConversation(userId);
+    return this.storage.compressConversation(userId);
   }
 
   getUnprocessedMessages(userId: number, lastId: number, targetDate: Date): Message[] {
-    return this.db.getUnprocessedMessages(userId, lastId, targetDate);
+    return this.storage.getUnprocessedMessages(userId, lastId, targetDate);
   }
 
   getMessagesSinceId(userId: number, lastId: number): Message[] {
-    return this.db.getMessagesSinceId(userId, lastId, 200);
+    return this.storage.getMessagesSinceId(userId, lastId, 200);
   }
 
   close(): void {
-    this.db.close();
+    this.storage.close();
   }
 }

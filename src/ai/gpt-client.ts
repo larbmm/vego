@@ -50,7 +50,7 @@ export class GPTClient {
       hour: '2-digit',
       minute: '2-digit',
       weekday: 'long'
-    })}\n---\n`;
+    })}\n\n注意：对话历史中的时间戳格式为 (时间: YYYY/MM/DD HH:mm)，这是系统添加的，你的回复中不要包含这种格式的时间戳。\n---\n`;
 
     return personaContent + timeInfo;
   }
@@ -58,16 +58,39 @@ export class GPTClient {
   async chat(
     userId: number,
     userMessage: string,
-    conversationHistory: Array<{ role: string; content: string }> = []
+    conversationHistory: Array<{ role: string; content: string; created_at?: string }> = []
   ): Promise<string> {
     const systemPrompt = await this.buildSystemPrompt(userId);
 
+    // Format conversation history with timestamps
+    // Use a format that's informative but less likely to be mimicked
+    const formattedHistory = conversationHistory.map((msg) => {
+      let content = msg.content;
+      
+      // Add timestamp in a system-like format
+      if (msg.created_at) {
+        const msgTime = new Date(msg.created_at);
+        const timeStr = msgTime.toLocaleString('zh-CN', {
+          timeZone: 'Asia/Shanghai',
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+        });
+        // Use parentheses to make it look like system metadata
+        content = `(时间: ${timeStr}) ${content}`;
+      }
+      
+      return {
+        role: msg.role as 'user' | 'assistant',
+        content,
+      };
+    });
+
     const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
       { role: 'system', content: systemPrompt },
-      ...conversationHistory.map((msg) => ({
-        role: msg.role as 'user' | 'assistant',
-        content: msg.content,
-      })),
+      ...formattedHistory,
       { role: 'user', content: userMessage },
     ];
 
@@ -123,7 +146,7 @@ export class GPTClient {
 
   private async compressTask(
     userId: number,
-    recentContext: Array<{ role: string; content: string }>
+    recentContext: Array<{ role: string; content: string; created_at?: string }>
   ): Promise<void> {
     try {
       this.memoryManager.compressConversation(userId);

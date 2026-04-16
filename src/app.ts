@@ -1,4 +1,4 @@
-import { config, getWorkspacePath, getDatabasePath } from './config/config.js';
+import { config, getWorkspacePath } from './config/config.js';
 import { Character } from './character/character.js';
 import { TelegramBot } from './bots/telegram-bot.js';
 import { DiscordBot } from './bots/discord-bot.js';
@@ -21,12 +21,12 @@ export class PersonaBotApp {
 
     for (const [charName, charConfig] of Object.entries(config.character)) {
       const workspacePath = getWorkspacePath(charConfig);
-      const databasePath = getDatabasePath(charConfig);
+      const storagePath = workspacePath; // JSONL files will be stored in workspace root
 
       const char = new Character(
         charName,
         workspacePath,
-        databasePath,
+        storagePath,
         config.api.key,
         config.api.base,
         config.api.model,
@@ -114,13 +114,15 @@ export class PersonaBotApp {
     // Schedule hourly checks for proactive chat
     for (const [charName, char] of this.characters) {
       // Find telegram bot for this character
-      const charConfig = Object.values(config.character).find(c => c.name === charName);
+      const charConfig = config.character[charName];
       if (!charConfig?.telegram_bot_token) {
+        console.log(`[App] Skipping proactive chat for '${charName}': no telegram token`);
         continue;
       }
 
       const tgBot = this.telegramBots.get(charConfig.telegram_bot_token);
       if (!tgBot) {
+        console.log(`[App] Skipping proactive chat for '${charName}': telegram bot not found`);
         continue;
       }
 
@@ -143,7 +145,7 @@ export class PersonaBotApp {
           );
         }
 
-        console.log(`✓ Proactive chat task added for '${charName}'`);
+        console.log(`✓ Proactive chat task added for '${charName}' (${Math.floor(config.proactive_chat.active_hours_end) - Math.floor(config.proactive_chat.active_hours_start) + 1} hourly checks)`);
       });
     }
   }
