@@ -175,7 +175,9 @@ export class TelegramBot {
           timestamp: new Date(),
           senderName: isGroup ? senderName : undefined,
           groupContext: isGroup ? {
-            recentMessages: await this.filterExpiredMessages(sharedGroupCache.getMessages(chatId)),
+            recentMessages: await this.filterExpiredMessages(
+              sharedGroupCache.getMessagesSinceLastResponse(chatId, this.characterName)
+            ),
             members: this.getGroupMemberNames(chatId),
           } : undefined,
         };
@@ -185,7 +187,7 @@ export class TelegramBot {
 
         // Store bot's response in recent messages
         if (isGroup) {
-          // 将bot的回复加入共享缓存，这样其他bot能看到
+          // 将bot的回复加入共享缓存
           sharedGroupCache.addMessage(chatId, {
             sender: this.characterName,
             content: response,
@@ -194,6 +196,8 @@ export class TelegramBot {
             isReplyToMe: false,
           });
           
+          // 记录bot回复的位置
+          sharedGroupCache.recordBotResponse(chatId, this.characterName);
           sharedGroupCache.setLastResponseTime(chatId, new Date());
         }
       } catch (error) {
