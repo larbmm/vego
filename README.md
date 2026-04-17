@@ -73,7 +73,7 @@
 
 ```bash
 # 克隆项目
-git clone <your-repo-url>
+git clone https://github.com/larbmm/vego
 cd vego
 
 # 安装依赖
