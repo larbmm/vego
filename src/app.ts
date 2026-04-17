@@ -1,10 +1,11 @@
-import { config, getWorkspacePath } from './config/config.js';
+import { config, getWorkspacePath, getDatabasePath } from './config/config.js';
 import { Character } from './character/character.js';
 import { TelegramBot } from './bots/telegram-bot.js';
 import { DiscordBot } from './bots/discord-bot.js';
 import { FeishuBot } from './bots/feishu-bot.js';
 import { Scheduler } from './scheduler/scheduler.js';
 import { DreamTask, WeeklyReviewTask } from './scheduler/tasks.js';
+import { startWebServer } from './web/server.js';
 import * as path from 'path';
 
 export class PersonaBotApp {
@@ -16,17 +17,21 @@ export class PersonaBotApp {
   private scheduler?: Scheduler;
   private running = false;
 
+  getCharacter(name: string): Character | undefined {
+    return this.characters.get(name);
+  }
+
   async initialize(): Promise<void> {
     console.log('[App] Initializing PersonaBotApp...');
 
     for (const [charName, charConfig] of Object.entries(config.character)) {
       const workspacePath = getWorkspacePath(charConfig);
-      const storagePath = workspacePath; // JSONL files will be stored in workspace root
+      const databasePath = getDatabasePath(charConfig);
 
       const char = new Character(
         charName,
         workspacePath,
-        storagePath,
+        databasePath,
         config.api.key,
         config.api.base,
         config.api.model,
@@ -153,6 +158,9 @@ export class PersonaBotApp {
   async run(): Promise<void> {
     this.running = true;
     const tasks: Promise<void>[] = [];
+
+    // Start web server
+    startWebServer(3000);
 
     // Start all bots
     for (const bot of this.telegramBots.values()) {

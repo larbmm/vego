@@ -1,0 +1,236 @@
+function app() {
+  return {
+    currentView: 'characters',
+    characters: [],
+    selectedCharacter: '',
+    messages: [],
+    totalMessages: 0,
+    selectedMessages: [],
+    editingMessageId: null,
+    editingMessageContent: '',
+    editingCharacter: null,
+    personaFiles: [],
+    currentPersonaFile: null,
+    currentPersonaContent: '',
+    showNewCharacterModal: false,
+    newCharacterName: '',
+    messageLimit: 50,
+    messageOffset: 0,
+    newMessage: '',
+    isSending: false,
+
+    // 角色名称映射（英文 -> 中文）
+    characterNameMap: {
+      'xiyue': '曦月',
+      'qianqian': '芊芊',
+      'wanqing': '婉清',
+    },
+
+    async init() {
+      await this.loadCharacters();
+    },
+
+    getCharacterDisplayName(name) {
+      return this.characterNameMap[name] || name;
+    },
+
+    async loadCharacters() {
+      const res = await fetch('/api/characters');
+      this.characters = await res.json();
+    },
+
+    async loadMessages() {
+      if (!this.selectedCharacter) return;
+      
+      const res = await fetch(`/api/messages/${this.selectedCharacter}?limit=${this.messageLimit}&offset=${this.messageOffset}`);
+      const data = await res.json();
+      
+      this.messages = data.messages;
+      this.totalMessages = data.total;
+      this.selectedMessages = [];
+    },
+
+    async loadMoreMessages() {
+      this.messageOffset += this.messageLimit;
+      await this.loadMessages();
+    },
+
+    toggleMessageSelection(id) {
+      const index = this.selectedMessages.indexOf(id);
+      if (index > -1) {
+        this.selectedMessages.splice(index, 1);
+      } else {
+        this.selectedMessages.push(id);
+      }
+    },
+
+    clearSelection() {
+      this.selectedMessages = [];
+      // Uncheck all checkboxes
+      document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+        if (cb.value && this.messages.find(m => m.id == cb.value)) {
+          cb.checked = false;
+        }
+      });
+    },
+
+    async deleteSelectedMessages() {
+      if (!confirm(`确定删除选中的 ${this.selectedMessages.length} 条消息吗？`)) {
+        return;
+      }
+
+      for (const id of this.selectedMessages) {
+        await fetch(`/api/messages/${this.selectedCharacter}/${id}`, {
+          method: 'DELETE'
+        });
+      }
+
+      this.selectedMessages = [];
+      await this.loadMessages();
+      alert('删除成功');
+    },
+
+    async clearAllMessages() {
+      if (!confirm('确定删除所有消息吗？此操作不可恢复！')) {
+        return;
+      }
+
+      await fetch(`/api/messages/${this.selectedCharacter}`, {
+        method: 'DELETE'
+      });
+
+      await this.loadMessages();
+      alert('删除成功');
+    },
+
+    editMessage(msg) {
+      this.editingMessageId = msg.id;
+      this.editingMessageContent = msg.content;
+    },
+
+    async saveMessage(id) {
+      await fetch(`/api/messages/${this.selectedCharacter}/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: this.editingMessageContent })
+      });
+
+      this.editingMessageId = null;
+      await this.loadMessages();
+      alert('保存成功');
+    },
+
+    async editCharacter(name) {
+      this.editingCharacter = name;
+      
+      const res = await fetch(`/api/persona/${name}`);
+      const data = await res.json();
+      this.personaFiles = data.files;
+      
+      if (this.personaFiles.length > 0) {
+        this.currentPersonaFile = this.personaFiles[0].name;
+        this.currentPersonaContent = this.personaFiles[0].content;
+      }
+    },
+
+    async savePersonaFile() {
+      await fetch(`/api/persona/${this.editingCharacter}/${this.currentPersonaFile}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: this.currentPersonaContent })
+      });
+
+      alert('保存成功');
+      await this.editCharacter(this.editingCharacter);
+    },
+
+    async createCharacter() {
+      if (!this.newCharacterName) {
+        alert('请输入角色名称');
+        return;
+      }
+
+      const res = await fetch('/api/characters', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: this.newCharacterName })
+      });
+
+      if (res.ok) {
+        this.showNewCharacterModal = false;
+        this.newCharacterName = '';
+        await this.loadCharacters();
+        alert('创建成功');
+      } else {
+        const error = await res.json();
+        alert('创建失败：' + error.error);
+      }
+    },
+
+    async deleteCharacter(name) {
+      if (!confirm(`确定删除角色 ${name} 吗？此操作不可恢复！`)) {
+        return;
+      }
+
+      const res = await fetch(`/api/characters/${name}`, {
+        method: 'DELETE'
+      });
+
+      if (res.ok) {
+        await this.loadCharacters();
+        alert('删除成功');
+      } else {
+        const error = await res.json();
+        alert('删除失败：' + error.error);
+      }
+    },
+
+    async sendMessage() {
+      if (!this.newMessage.trim() || !this.selectedCharacter) {
+        return;
+      }
+
+      this.isSending = true;
+
+      try {
+        const res = await fetch(`/api/chat/${this.selectedCharacter}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: this.newMessage })
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          this.newMessage = '';
+          await this.loadMessages();
+          
+          // 滚动到底部
+          setTimeout(() => {
+            const container = document.getElementById('chatContainer');
+            if (container) {
+              container.scrollTop = container.scrollHeight;
+            }
+          }, 100);
+        } else {
+          const error = await res.json();
+          alert('发送失败：' + error.error);
+        }
+      } catch (error) {
+        alert('发送失败：' + error.message);
+      } finally {
+        this.isSending = false;
+      }
+    },
+
+    formatTime(timestamp) {
+      const date = new Date(timestamp);
+      return date.toLocaleString('zh-CN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+  };
+}

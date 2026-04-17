@@ -28,7 +28,7 @@ export class Character {
   constructor(
     name: string,
     workspacePath: string,
-    storagePath: string,
+    databasePath: string,
     apiKey: string,
     apiBase: string,
     apiModel: string,
@@ -36,7 +36,7 @@ export class Character {
   ) {
     this.name = name;
     this.workspacePath = workspacePath;
-    this.databasePath = storagePath;
+    this.databasePath = databasePath;
     this.apiKey = apiKey;
     this.apiBase = apiBase;
     this.apiModel = apiModel;
@@ -121,7 +121,27 @@ export class Character {
       created_at: msg.created_at,
     }));
 
-    const response = await this.gptClient!.chat(userId, message.content, historyDict);
+    // Check if it's a group chat (user_id contains @)
+    const isGroupChat = message.user_id.includes('@');
+
+    // Prepare group context if available
+    let groupContextText = '';
+    if (isGroupChat && message.groupContext) {
+      const members = message.groupContext.members.join('、');
+      const recentChats = message.groupContext.recentMessages
+        .slice(-10) // 最多10条
+        .map(msg => `${msg.sender}: ${msg.content}`)
+        .join('\n');
+      
+      groupContextText = `\n\n[群聊上下文]\n群成员：${members}\n最近的聊天记录：\n${recentChats}\n[/群聊上下文]\n\n`;
+    }
+
+    const response = await this.gptClient!.chat(
+      userId, 
+      groupContextText + message.content, 
+      historyDict, 
+      isGroupChat
+    );
 
     this.memoryManager!.storeMessage(
       userId,
@@ -154,7 +174,27 @@ export class Character {
         created_at: msg.created_at,
       }));
 
-      const response = await this.gptClient!.chat(userId, combinedContent, historyDict);
+      // Check if it's a group chat
+      const isGroupChat = lastMessage.user_id.includes('@');
+
+      // Prepare group context if available
+      let groupContextText = '';
+      if (isGroupChat && lastMessage.groupContext) {
+        const members = lastMessage.groupContext.members.join('、');
+        const recentChats = lastMessage.groupContext.recentMessages
+          .slice(-10)
+          .map(msg => `${msg.sender}: ${msg.content}`)
+          .join('\n');
+        
+        groupContextText = `\n\n[群聊上下文]\n群成员：${members}\n最近的聊天记录：\n${recentChats}\n[/群聊上下文]\n\n`;
+      }
+
+      const response = await this.gptClient!.chat(
+        userId, 
+        groupContextText + combinedContent, 
+        historyDict, 
+        isGroupChat
+      );
 
       // Store all user messages
       for (const msg of batch.messages) {

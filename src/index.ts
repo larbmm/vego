@@ -1,7 +1,14 @@
 import { PersonaBotApp } from './app.js';
 
+let appInstance: PersonaBotApp | null = null;
+
+export function getAppInstance(): PersonaBotApp | null {
+  return appInstance;
+}
+
 async function main() {
   const app = new PersonaBotApp();
+  appInstance = app;
 
   // Handle graceful shutdown
   process.on('SIGINT', async () => {

@@ -37,7 +37,7 @@ export class GPTClient {
     }
   }
 
-  private async buildSystemPrompt(userId: number): Promise<string> {
+  private async buildSystemPrompt(userId: number, isGroupChat: boolean = false): Promise<string> {
     const personaContent = this.loadPersona();
     
     // 添加当前时间信息
@@ -50,17 +50,23 @@ export class GPTClient {
       hour: '2-digit',
       minute: '2-digit',
       weekday: 'long'
-    })}\n\n注意：对话历史中的时间戳格式为 (时间: YYYY/MM/DD HH:mm)，这是系统添加的，你的回复中不要包含这种格式的时间戳。\n---\n`;
+    })}\n\n注意：对话历史中的时间戳格式为 (时间: YYYY/MM/DD HH:mm)，这是系统添加的，你的回复中不要包含这种格式的时间戳。\n`;
 
-    return personaContent + timeInfo;
+    // 添加场景信息
+    const sceneInfo = isGroupChat 
+      ? `\n当前场景：群聊（有其他人在场）\n重要提醒：现在是在群聊中，其他人也能看到你的回复。请注意保持得体，避免过于私密或不适合公开的内容。\n---\n`
+      : `\n当前场景：私聊（只有你和主人）\n---\n`;
+
+    return personaContent + timeInfo + sceneInfo;
   }
 
   async chat(
     userId: number,
     userMessage: string,
-    conversationHistory: Array<{ role: string; content: string; created_at?: string }> = []
+    conversationHistory: Array<{ role: string; content: string; created_at?: string }> = [],
+    isGroupChat: boolean = false
   ): Promise<string> {
-    const systemPrompt = await this.buildSystemPrompt(userId);
+    const systemPrompt = await this.buildSystemPrompt(userId, isGroupChat);
 
     // Format conversation history with timestamps
     // Use a format that's informative but less likely to be mimicked
