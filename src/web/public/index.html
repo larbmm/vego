@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vego 管理面板</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <style>
+    [x-cloak] { display: none !important; }
+    .chat-bubble-user {
+      background: #dcf8c6;
+      margin-left: auto;
+      max-width: 70%;
+      font-size: 0.875rem; /* 14px */
+    }
+    .chat-bubble-assistant {
+      background: #ffffff;
+      margin-right: auto;
+      max-width: 70%;
+      font-size: 0.875rem; /* 14px */
+    }
+  </style>
+</head>
+<body class="bg-gray-100" x-data="app()" x-init="init()">
+  
+  <!-- Header -->
+  <div class="bg-blue-600 text-white p-4 shadow-lg">
+    <h1 class="text-2xl font-bold">🤖 Vego 管理面板</h1>
+  </div>
+
+  <div class="flex h-screen">
+    
+    <!-- Sidebar -->
+    <div class="w-64 bg-white shadow-lg overflow-y-auto">
+      <nav class="p-4">
+        <button 
+          @click="currentView = 'characters'" 
+          :class="currentView === 'characters' ? 'bg-blue-100 text-blue-600' : 'text-gray-700'"
+          class="w-full text-left px-4 py-3 rounded-lg mb-2 hover:bg-gray-100 transition">
+          👥 角色管理
+        </button>
+        
+        <button 
+          @click="currentView = 'chat'" 
+          :class="currentView === 'chat' ? 'bg-blue-100 text-blue-600' : 'text-gray-700'"
+          class="w-full text-left px-4 py-3 rounded-lg mb-2 hover:bg-gray-100 transition">
+          💬 对话管理
+        </button>
+        
+        <button 
+          @click="currentView = 'config'" 
+          :class="currentView === 'config' ? 'bg-blue-100 text-blue-600' : 'text-gray-700'"
+          class="w-full text-left px-4 py-3 rounded-lg mb-2 hover:bg-gray-100 transition">
+          ⚙️ 配置管理
+        </button>
+        
+        <button 
+          @click="currentView = 'status'" 
+          :class="currentView === 'status' ? 'bg-blue-100 text-blue-600' : 'text-gray-700'"
+          class="w-full text-left px-4 py-3 rounded-lg mb-2 hover:bg-gray-100 transition">
+          📊 系统状态
+        </button>
+      </nav>
+    </div>
+
+    <!-- Main Content -->
+    <div class="flex-1 overflow-y-auto p-6">
+      
+      <!-- 角色管理 -->
+      <div x-show="currentView === 'characters'" x-cloak>
+        <div class="bg-white rounded-lg shadow p-6">
+          <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold">角色管理</h2>
+            <button 
+              @click="showNewCharacterModal = true"
+              class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
+              + 新增角色
+            </button>
+          </div>
+
+          <!-- 角色列表 -->
+          <div class="space-y-4">
+            <template x-for="char in characters" :key="char.name">
+              <div class="border rounded-lg p-4 hover:shadow-md transition">
+                <div class="flex justify-between items-center">
+                  <div>
+                    <h3 class="text-xl font-semibold" x-text="getCharacterDisplayName(char.name)"></h3>
+                    <p class="text-gray-500 text-sm" x-text="char.path"></p>
+                  </div>
+                  <div class="space-x-2">
+                    <button 
+                      @click="editCharacter(char.name)"
+                      class="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 transition">
+                      编辑
+                    </button>
+                    <button 
+                      @click="deleteCharacter(char.name)"
+                      class="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 transition">
+                      删除
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+
+        <!-- 编辑角色人设 -->
+        <div x-show="editingCharacter" x-cloak class="bg-white rounded-lg shadow p-6 mt-6">
+          <h3 class="text-xl font-bold mb-4">
+            编辑角色：<span x-text="getCharacterDisplayName(editingCharacter)"></span>
+          </h3>
+          
+          <div class="grid grid-cols-2 gap-4 mb-4">
+            <template x-for="file in personaFiles" :key="file.name">
+              <button 
+                @click="currentPersonaFile = file.name; currentPersonaContent = file.content"
+                :class="currentPersonaFile === file.name ? 'bg-blue-100 border-blue-500' : 'bg-gray-50'"
+                class="border-2 p-3 rounded-lg text-left hover:shadow transition">
+                📝 <span x-text="file.name"></span>
+              </button>
+            </template>
+          </div>
+
+          <div x-show="currentPersonaFile" x-cloak>
+            <label class="block text-sm font-medium mb-2" x-text="currentPersonaFile"></label>
+            <textarea 
+              x-model="currentPersonaContent"
+              class="w-full h-96 p-4 border rounded-lg font-mono text-sm"
+              placeholder="编辑 Markdown 内容..."></textarea>
+            
+            <div class="mt-4 flex justify-end space-x-2">
+              <button 
+                @click="editingCharacter = null; currentPersonaFile = null"
+                class="px-4 py-2 border rounded-lg hover:bg-gray-100 transition">
+                取消
+              </button>
+              <button 
+                @click="savePersonaFile()"
+                class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
+                保存
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 对话管理 -->
+      <div x-show="currentView === 'chat'" x-cloak>
+        <div class="bg-white rounded-lg shadow p-6">
+          <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold">
+              对话管理
+              <span x-show="selectedCharacter" class="text-gray-500 text-lg ml-2">
+                - <span x-text="getCharacterDisplayName(selectedCharacter)"></span>
+              </span>
+            </h2>
+            <select 
+              x-model="selectedCharacter" 
+              @change="loadMessages()"
+              class="border rounded-lg px-4 py-2">
+              <option value="">选择角色</option>
+              <template x-for="char in characters" :key="char.name">
+                <option :value="char.name" x-text="getCharacterDisplayName(char.name)"></option>
+              </template>
+            </select>
+          </div>
+
+          <div x-show="selectedCharacter" x-cloak>
+            <!-- 操作按钮 -->
+            <div class="mb-4 flex justify-between items-center">
+              <div>
+                <span class="text-gray-600">共 <span x-text="totalMessages"></span> 条消息</span>
+                <span x-show="selectedMessages.length > 0" class="ml-4 text-blue-600">
+                  已选中 <span x-text="selectedMessages.length"></span> 条
+                </span>
+              </div>
+              <div class="space-x-2">
+                <button 
+                  x-show="selectedMessages.length > 0"
+                  @click="clearSelection()"
+                  class="bg-gray-400 text-white px-4 py-2 rounded-lg hover:bg-gray-500 transition">
+                  清除选择
+                </button>
+                <button 
+                  x-show="selectedMessages.length > 0"
+                  @click="deleteSelectedMessages()"
+                  class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition">
+                  删除选中
+                </button>
+                <button 
+                  @click="clearAllMessages()"
+                  class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition">
+                  删除所有
+                </button>
+              </div>
+            </div>
+
+            <!-- 聊天气泡界面 -->
+            <div class="border rounded-lg p-4 h-[500px] overflow-y-auto bg-gray-50" id="chatContainer">
+              <template x-for="msg in messages" :key="msg.id">
+                <div class="mb-4 flex items-start">
+                  
+                  <!-- 复选框 - 统一放在左边 -->
+                  <input 
+                    type="checkbox" 
+                    :value="msg.id"
+                    @change="toggleMessageSelection(msg.id)"
+                    class="mt-2 mr-2 flex-shrink-0">
+                  
+                  <!-- 消息气泡 -->
+                  <div 
+                    :class="msg.role === 'user' ? 'chat-bubble-user' : 'chat-bubble-assistant'"
+                    class="rounded-lg p-3 shadow flex-1">
+                    
+                    <div class="flex justify-between items-start mb-1">
+                      <span class="text-xs text-gray-500" x-text="formatTime(msg.created_at)"></span>
+                      <button 
+                        @click="editMessage(msg)"
+                        class="text-xs text-blue-500 hover:underline ml-2">
+                        编辑
+                      </button>
+                    </div>
+                    
+                    <div 
+                      x-show="editingMessageId !== msg.id"
+                      class="whitespace-pre-wrap" 
+                      x-text="msg.content"></div>
+                    
+                    <div x-show="editingMessageId === msg.id" x-cloak>
+                      <textarea 
+                        x-model="editingMessageContent"
+                        class="w-full p-2 border rounded text-sm"
+                        rows="3"></textarea>
+                      <div class="mt-2 flex justify-end space-x-2">
+                        <button 
+                          @click="editingMessageId = null"
+                          class="text-xs px-2 py-1 border rounded hover:bg-gray-100">
+                          取消
+                        </button>
+                        <button 
+                          @click="saveMessage(msg.id)"
+                          class="text-xs px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600">
+                          保存
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </template>
+              
+              <!-- 加载中提示 -->
+              <div x-show="isSending" class="text-center text-gray-500 py-4">
+                <span class="inline-block animate-pulse">AI 正在思考...</span>
+              </div>
+            </div>
+
+            <!-- 发送消息输入框 -->
+            <div class="mt-4 flex gap-2">
+              <input 
+                x-model="newMessage"
+                @keydown.enter="sendMessage()"
+                type="text" 
+                placeholder="输入消息，按 Enter 发送..."
+                class="flex-1 border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                :disabled="isSending">
+              <button 
+                @click="sendMessage()"
+                :disabled="isSending || !newMessage.trim()"
+                class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed">
+                发送
+              </button>
+            </div>
+
+            <!-- 分页 -->
+            <div class="mt-4 flex justify-center space-x-2">
+              <button 
+                @click="loadMoreMessages()"
+                x-show="messages.length < totalMessages"
+                class="px-4 py-2 border rounded-lg hover:bg-gray-100 transition">
+                加载更多
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 配置管理 -->
+      <div x-show="currentView === 'config'" x-cloak>
+        <div class="bg-white rounded-lg shadow p-6">
+          <h2 class="text-2xl font-bold mb-6">配置管理</h2>
+          <p class="text-gray-500">配置管理功能开发中...</p>
+        </div>
+      </div>
+
+      <!-- 系统状态 -->
+      <div x-show="currentView === 'status'" x-cloak>
+        <div class="bg-white rounded-lg shadow p-6">
+          <h2 class="text-2xl font-bold mb-6">系统状态</h2>
+          <p class="text-gray-500">系统状态功能开发中...</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 新增角色模态框 -->
+  <div 
+    x-show="showNewCharacterModal" 
+    x-cloak
+    class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg p-6 w-96">
+      <h3 class="text-xl font-bold mb-4">新增角色</h3>
+      <input 
+        x-model="newCharacterName"
+        type="text" 
+        placeholder="角色名称（英文）"
+        class="w-full border rounded-lg px-4 py-2 mb-4">
+      <div class="flex justify-end space-x-2">
+        <button 
+          @click="showNewCharacterModal = false; newCharacterName = ''"
+          class="px-4 py-2 border rounded-lg hover:bg-gray-100">
+          取消
+        </button>
+        <button 
+          @click="createCharacter()"
+          class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+          创建
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

@@ -1,9 +1,23 @@
+export interface GroupMessage {
+  sender: string;
+  content: string;
+  timestamp: Date;
+  mentionsMe?: boolean;
+  isReplyToMe?: boolean;
+}
+
+export interface GroupContext {
+  recentMessages: GroupMessage[];
+  members: string[];
+}
+
 export interface UnifiedMessage {
   platform: 'telegram' | 'discord' | 'feishu';
   user_id: string;
   platform_message_id: string;
   content: string;
   timestamp: Date;
+  groupContext?: GroupContext;
 }
 
 export type MessageHandler = (message: UnifiedMessage) => Promise<string>;

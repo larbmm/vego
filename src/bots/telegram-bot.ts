@@ -8,6 +8,7 @@ export class TelegramBot {
   private characterName: string;
   private groupParticipation?: GroupParticipation;
   private recentGroupMessages: Map<string, GroupMessage[]> = new Map();
+  private lastBotResponseTime: Map<string, Date> = new Map(); // 记录每个群最后一次回复的时间
 
   constructor(handler: MessageHandler, characterName: string) {
     this.handler = handler;
@@ -81,7 +82,7 @@ export class TelegramBot {
 
         // For group chats, check if should respond
         if (isGroup && this.groupParticipation) {
-          // Store recent messages
+          // Store recent messages (since last bot response)
           if (!this.recentGroupMessages.has(chatId)) {
             this.recentGroupMessages.set(chatId, []);
           }
@@ -96,8 +97,10 @@ export class TelegramBot {
           };
 
           recentMessages.push(groupMessage);
+          
+          // 限制最多10条（从上次 bot 回复后开始计数）
           if (recentMessages.length > 10) {
-            recentMessages.shift(); // Keep only last 10 messages
+            recentMessages.shift();
           }
 
           // Decide if should respond
@@ -136,6 +139,26 @@ export class TelegramBot {
           if (!mentionsMe && !isReplyToMe) {
             return;
           }
+          
+          // Store messages for context (even without AI judgment)
+          if (!this.recentGroupMessages.has(chatId)) {
+            this.recentGroupMessages.set(chatId, []);
+          }
+          const recentMessages = this.recentGroupMessages.get(chatId)!;
+          
+          const groupMessage: GroupMessage = {
+            sender: senderName,
+            content: ctx.message.text,
+            timestamp: new Date(),
+            mentionsMe,
+            isReplyToMe,
+          };
+
+          recentMessages.push(groupMessage);
+          
+          if (recentMessages.length > 10) {
+            recentMessages.shift();
+          }
         }
 
         const message: UnifiedMessage = {
@@ -144,18 +167,20 @@ export class TelegramBot {
           platform_message_id: String(ctx.message.message_id || ''),
           content: ctx.message.text || '',
           timestamp: new Date(),
+          groupContext: isGroup ? {
+            recentMessages: this.recentGroupMessages.get(chatId) || [],
+            members: this.getGroupMemberNames(chatId),
+          } : undefined,
         };
 
         const response = await this.handler(message);
         await ctx.reply(response);
 
-        // Store bot's response in recent messages
-        if (isGroup && this.recentGroupMessages.has(chatId)) {
-          this.recentGroupMessages.get(chatId)!.push({
-            sender: this.characterName,
-            content: response,
-            timestamp: new Date(),
-          });
+        // Store bot's response in recent messages and clear the buffer
+        if (isGroup) {
+          // 清空群聊消息缓存（因为 bot 已经回复了，重新开始计数）
+          this.recentGroupMessages.set(chatId, []);
+          this.lastBotResponseTime.set(chatId, new Date());
         }
       } catch (error) {
         console.error(`[TelegramBot:${this.characterName}] Error:`, error);
@@ -182,5 +207,18 @@ export class TelegramBot {
 
   getBot(): Telegraf {
     return this.bot;
+  }
+
+  private getGroupMemberNames(chatId: string): string[] {
+    const messages = this.recentGroupMessages.get(chatId) || [];
+    const uniqueMembers = new Set<string>();
+    
+    messages.forEach(msg => {
+      if (msg.sender && msg.sender !== this.characterName) {
+        uniqueMembers.add(msg.sender);
+      }
+    });
+    
+    return Array.from(uniqueMembers);
   }
 }

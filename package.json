@@ -8,14 +8,19 @@
     "dev": "tsx watch src/index.ts",
     "start": "tsx src/index.ts",
     "build": "tsc",
-    "test": "vitest"
+    "test": "vitest",
+    "chat": "tsx src/tools/chat-manager.ts"
   },
   "engines": {
     "node": ">=18.0.0"
   },
   "dependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/express": "^5.0.6",
+    "better-sqlite3": "^12.9.0",
     "discord.js": "^14.14.0",
     "dotenv": "^16.3.1",
+    "express": "^5.2.1",
     "node-cron": "^3.0.3",
     "openai": "^4.52.0",
     "telegraf": "^4.15.0",
