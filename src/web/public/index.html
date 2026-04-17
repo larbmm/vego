@@ -215,7 +215,11 @@
                     class="rounded-lg p-3 shadow flex-1">
                     
                     <div class="flex justify-between items-start mb-1">
-                      <span class="text-xs text-gray-500" x-text="formatTime(msg.created_at)"></span>
+                      <div class="flex items-center gap-2">
+                        <span class="text-xs text-gray-500" x-text="formatTime(msg.created_at)"></span>
+                        <!-- 群聊发言人名字 -->
+                        <span x-show="msg.sender_name" class="text-xs font-semibold text-blue-600" x-text="'[' + msg.sender_name + ']'"></span>
+                      </div>
                       <button 
                         @click="editMessage(msg)"
                         class="text-xs text-blue-500 hover:underline ml-2">
@@ -287,10 +291,98 @@
       </div>
 
       <!-- 配置管理 -->
-      <div x-show="currentView === 'config'" x-cloak>
+      <div x-show="currentView === 'config'" x-cloak x-init="if (currentView === 'config' && !configContent) loadConfig()">
         <div class="bg-white rounded-lg shadow p-6">
-          <h2 class="text-2xl font-bold mb-6">配置管理</h2>
-          <p class="text-gray-500">配置管理功能开发中...</p>
+          <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold">配置管理</h2>
+            <div class="space-x-2">
+              <button 
+                @click="loadConfig()"
+                :disabled="configLoading"
+                class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition disabled:bg-gray-400">
+                <span x-show="!configLoading">🔄 重新加载</span>
+                <span x-show="configLoading">加载中...</span>
+              </button>
+              <button 
+                @click="saveConfig()"
+                :disabled="configSaving || configLoading"
+                class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition disabled:bg-gray-400">
+                <span x-show="!configSaving">💾 保存配置</span>
+                <span x-show="configSaving">保存中...</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <p class="text-sm text-yellow-800">
+              ⚠️ <strong>注意：</strong>修改配置后需要重启应用才能生效。保存前会自动备份当前配置。
+            </p>
+          </div>
+
+          <div class="mb-4">
+            <h3 class="text-lg font-semibold mb-2">配置文件 (TOML 格式)</h3>
+            <p class="text-sm text-gray-600 mb-4">
+              可以修改 API 密钥、模型、网址、角色配置、定时任务等设置。
+            </p>
+          </div>
+
+          <div x-show="configLoading" class="text-center py-8">
+            <span class="text-gray-500">加载配置中...</span>
+          </div>
+
+          <div x-show="!configLoading && configContent" x-cloak>
+            <textarea 
+              x-model="configContent"
+              class="w-full h-[600px] p-4 border rounded-lg font-mono text-sm bg-gray-50"
+              placeholder="配置内容..."
+              spellcheck="false"></textarea>
+            
+            <div class="mt-4 text-sm text-gray-600">
+              <details class="cursor-pointer">
+                <summary class="font-semibold mb-2">📖 配置说明</summary>
+                <div class="pl-4 space-y-2 mt-2">
+                  <p><strong>[api]</strong> - API 配置</p>
+                  <ul class="list-disc pl-6 space-y-1">
+                    <li><code>key</code> - API 密钥</li>
+                    <li><code>model</code> - 模型名称（如 deepseek-chat）</li>
+                    <li><code>base</code> - API 基础 URL</li>
+                  </ul>
+                  
+                  <p><strong>[character.角色名]</strong> - 角色配置</p>
+                  <ul class="list-disc pl-6 space-y-1">
+                    <li><code>path</code> - 工作区路径</li>
+                    <li><code>telegram_bot_token</code> - Telegram Bot Token</li>
+                    <li><code>discord_bot_token</code> - Discord Bot Token</li>
+                  </ul>
+                  
+                  <p><strong>[memory]</strong> - 记忆配置</p>
+                  <ul class="list-disc pl-6 space-y-1">
+                    <li><code>max_history_messages</code> - 最大历史消息数</li>
+                    <li><code>compress_threshold</code> - 压缩阈值</li>
+                  </ul>
+                  
+                  <p><strong>[scheduler]</strong> - 定时任务配置</p>
+                  <ul class="list-disc pl-6 space-y-1">
+                    <li><code>enabled</code> - 是否启用</li>
+                    <li><code>schedule_time</code> - 执行时间（如 "3:00"）</li>
+                  </ul>
+                  
+                  <p><strong>[proactive_chat]</strong> - 主动聊天配置</p>
+                  <ul class="list-disc pl-6 space-y-1">
+                    <li><code>enabled</code> - 是否启用</li>
+                    <li><code>active_hours_start</code> - 活跃时段开始（如 6.5 = 6:30）</li>
+                    <li><code>active_hours_end</code> - 活跃时段结束</li>
+                  </ul>
+                  
+                  <p><strong>[group_chat]</strong> - 群聊配置</p>
+                  <ul class="list-disc pl-6 space-y-1">
+                    <li><code>use_ai_judgment</code> - 是否使用 AI 判断</li>
+                    <li><code>question_response_probability</code> - 问题回复概率</li>
+                  </ul>
+                </div>
+              </details>
+            </div>
+          </div>
         </div>
       </div>
 

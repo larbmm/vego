@@ -14,14 +14,19 @@ export class MemoryManager {
     return this.db.getOrCreateUser(platform);
   }
 
+  updateUserPlatformId(userId: number, platform: string, platformUserId: string): void {
+    this.db.updateUserPlatformId(userId, platform, platformUserId);
+  }
+
   storeMessage(
     userId: number,
     role: 'user' | 'assistant',
     content: string,
     platform: string,
-    messageId: string = ''
+    messageId: string = '',
+    senderName?: string
   ): void {
-    this.db.storeMessage(userId, role, content, platform, messageId);
+    this.db.storeMessage(userId, role, content, platform, messageId, senderName);
   }
 
   getConversationHistory(userId: number): Message[] {

@@ -57,18 +57,13 @@ export class ProactiveChatTask {
     }
 
     try {
-      // Query the database for user's platform_user_id
+      // Access the database through memory manager
       const db = (this.character.memoryManager as any).db;
-      const result = db
-        .prepare('SELECT platform_user_id FROM users WHERE id = ? AND platform = ?')
-        .get(userId, 'telegram') as { platform_user_id: string } | undefined;
+      const result = db.db
+        .prepare('SELECT telegram_user_id FROM users WHERE id = ?')
+        .get(userId) as { telegram_user_id: string | null } | undefined;
       
-      // Skip if it's a group chat (contains @)
-      if (result?.platform_user_id && result.platform_user_id.includes('@')) {
-        return null;
-      }
-      
-      return result?.platform_user_id || null;
+      return result?.telegram_user_id || null;
     } catch (error) {
       console.error('[ProactiveChatTask] Error getting telegram ID:', error);
       return null;

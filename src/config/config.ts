@@ -55,6 +55,7 @@ export interface GroupChatConfig {
   use_ai_judgment: boolean;
   question_response_probability: number;
   normal_response_probability: number;
+  message_expiry_minutes: number;
 }
 
 export interface MemoryConfig {
@@ -127,6 +128,7 @@ function loadConfig(): Config {
       use_ai_judgment: rawConfig.group_chat?.use_ai_judgment !== false,
       question_response_probability: rawConfig.group_chat?.question_response_probability || 0.6,
       normal_response_probability: rawConfig.group_chat?.normal_response_probability || 0.2,
+      message_expiry_minutes: rawConfig.group_chat?.message_expiry_minutes || 30,
     },
   };
 
@@ -154,4 +156,8 @@ export function getWorkspacePath(charConfig: CharacterConfig): string {
 
 export function getDatabasePath(charConfig: CharacterConfig): string {
   return path.join(getWorkspacePath(charConfig), 'memory.db');
+}
+
+export function getConfigPath(): string {
+  return CONFIG_PATH;
 }

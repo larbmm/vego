@@ -18,6 +18,7 @@ export interface UnifiedMessage {
   content: string;
   timestamp: Date;
   groupContext?: GroupContext;
+  senderName?: string; // 群聊发言人名字
 }
 
 export type MessageHandler = (message: UnifiedMessage) => Promise<string>;

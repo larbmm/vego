@@ -1,19 +1,31 @@
 import { Telegraf, Context } from 'telegraf';
 import { UnifiedMessage, MessageHandler } from '../router/message.js';
 import { GroupParticipation, GroupMessage } from './group-participation.js';
+import { sharedGroupCache } from './shared-group-cache.js';
 
 export class TelegramBot {
   private bot: Telegraf;
   private handler: MessageHandler;
   private characterName: string;
   private groupParticipation?: GroupParticipation;
-  private recentGroupMessages: Map<string, GroupMessage[]> = new Map();
-  private lastBotResponseTime: Map<string, Date> = new Map(); // 记录每个群最后一次回复的时间
 
   constructor(handler: MessageHandler, characterName: string) {
     this.handler = handler;
     this.characterName = characterName;
     this.bot = new Telegraf('');
+  }
+
+  // 过滤掉过期的消息
+  private async filterExpiredMessages(messages: GroupMessage[]): Promise<GroupMessage[]> {
+    const { config } = await import('../config/config.js');
+    const expiryMinutes = config.group_chat.message_expiry_minutes || 30;
+    const now = new Date();
+    const expiryMs = expiryMinutes * 60 * 1000;
+    
+    return messages.filter(msg => {
+      const messageAge = now.getTime() - msg.timestamp.getTime();
+      return messageAge < expiryMs;
+    });
   }
 
   async setup(token: string, apiKey?: string, apiBase?: string, model?: string): Promise<void> {
@@ -83,10 +95,11 @@ export class TelegramBot {
         // For group chats, check if should respond
         if (isGroup && this.groupParticipation) {
           // Store recent messages (since last bot response)
-          if (!this.recentGroupMessages.has(chatId)) {
-            this.recentGroupMessages.set(chatId, []);
-          }
-          const recentMessages = this.recentGroupMessages.get(chatId)!;
+          let recentMessages = sharedGroupCache.getMessages(chatId);
+          
+          // 先过滤掉过期的消息
+          recentMessages = await this.filterExpiredMessages(recentMessages);
+          sharedGroupCache.setMessages(chatId, recentMessages);
           
           const groupMessage: GroupMessage = {
             sender: senderName,
@@ -96,12 +109,8 @@ export class TelegramBot {
             isReplyToMe,
           };
 
-          recentMessages.push(groupMessage);
-          
-          // 限制最多10条（从上次 bot 回复后开始计数）
-          if (recentMessages.length > 10) {
-            recentMessages.shift();
-          }
+          sharedGroupCache.addMessage(chatId, groupMessage);
+          recentMessages = sharedGroupCache.getMessages(chatId);
 
           // Decide if should respond
           const { config } = await import('../config/config.js');
@@ -141,10 +150,11 @@ export class TelegramBot {
           }
           
           // Store messages for context (even without AI judgment)
-          if (!this.recentGroupMessages.has(chatId)) {
-            this.recentGroupMessages.set(chatId, []);
-          }
-          const recentMessages = this.recentGroupMessages.get(chatId)!;
+          let recentMessages = sharedGroupCache.getMessages(chatId);
+          
+          // 先过滤掉过期的消息
+          recentMessages = await this.filterExpiredMessages(recentMessages);
+          sharedGroupCache.setMessages(chatId, recentMessages);
           
           const groupMessage: GroupMessage = {
             sender: senderName,
@@ -154,11 +164,7 @@ export class TelegramBot {
             isReplyToMe,
           };
 
-          recentMessages.push(groupMessage);
-          
-          if (recentMessages.length > 10) {
-            recentMessages.shift();
-          }
+          sharedGroupCache.addMessage(chatId, groupMessage);
         }
 
         const message: UnifiedMessage = {
@@ -167,8 +173,9 @@ export class TelegramBot {
           platform_message_id: String(ctx.message.message_id || ''),
           content: ctx.message.text || '',
           timestamp: new Date(),
+          senderName: isGroup ? senderName : undefined,
           groupContext: isGroup ? {
-            recentMessages: this.recentGroupMessages.get(chatId) || [],
+            recentMessages: await this.filterExpiredMessages(sharedGroupCache.getMessages(chatId)),
             members: this.getGroupMemberNames(chatId),
           } : undefined,
         };
@@ -176,11 +183,18 @@ export class TelegramBot {
         const response = await this.handler(message);
         await ctx.reply(response);
 
-        // Store bot's response in recent messages and clear the buffer
+        // Store bot's response in recent messages
         if (isGroup) {
-          // 清空群聊消息缓存（因为 bot 已经回复了，重新开始计数）
-          this.recentGroupMessages.set(chatId, []);
-          this.lastBotResponseTime.set(chatId, new Date());
+          // 将bot的回复加入共享缓存，这样其他bot能看到
+          sharedGroupCache.addMessage(chatId, {
+            sender: this.characterName,
+            content: response,
+            timestamp: new Date(),
+            mentionsMe: false,
+            isReplyToMe: false,
+          });
+          
+          sharedGroupCache.setLastResponseTime(chatId, new Date());
         }
       } catch (error) {
         console.error(`[TelegramBot:${this.characterName}] Error:`, error);
@@ -210,7 +224,7 @@ export class TelegramBot {
   }
 
   private getGroupMemberNames(chatId: string): string[] {
-    const messages = this.recentGroupMessages.get(chatId) || [];
+    const messages = sharedGroupCache.getMessages(chatId);
     const uniqueMembers = new Set<string>();
     
     messages.forEach(msg => {

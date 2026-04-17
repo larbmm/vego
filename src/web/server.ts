@@ -1,6 +1,7 @@
 import express from 'express';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as toml from 'toml';
 import { config, getWorkspacePath, getDatabasePath } from '../config/config.js';
 import { DatabaseManager } from '../memory/database.js';
 
@@ -273,6 +274,58 @@ app.post('/api/chat/:character', async (req, res) => {
   } catch (error: any) {
     console.error('[Web] Chat error:', error);
     res.status(500).json({ error: error.message || 'Failed to process message' });
+  }
+});
+
+// API: Get current configuration
+app.get('/api/config', async (req, res) => {
+  try {
+    const { getConfigPath } = await import('../config/config.js');
+    const configPath = getConfigPath();
+    
+    if (!fs.existsSync(configPath)) {
+      return res.status(404).json({ error: 'Config file not found' });
+    }
+    
+    const configContent = fs.readFileSync(configPath, 'utf-8');
+    res.json({ content: configContent });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// API: Update configuration
+app.put('/api/config', async (req, res) => {
+  const { content } = req.body;
+  
+  if (!content) {
+    return res.status(400).json({ error: 'Config content is required' });
+  }
+  
+  try {
+    // Validate TOML syntax
+    toml.parse(content);
+    
+    const { getConfigPath } = await import('../config/config.js');
+    const configPath = getConfigPath();
+    
+    // Backup old config
+    if (fs.existsSync(configPath)) {
+      const backupPath = `${configPath}.backup.${Date.now()}`;
+      fs.copyFileSync(configPath, backupPath);
+    }
+    
+    // Write new config
+    fs.writeFileSync(configPath, content, 'utf-8');
+    
+    res.json({ 
+      success: true, 
+      message: '配置已保存，需要重启应用才能生效' 
+    });
+  } catch (error: any) {
+    res.status(400).json({ 
+      error: 'TOML 格式错误: ' + error.message 
+    });
   }
 });
 
