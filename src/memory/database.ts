@@ -10,6 +10,7 @@ export interface Message {
   platform: string;
   message_id: string;
   created_at: string; // ISO string format
+  sender_name?: string; // 群聊发言人名字
 }
 
 export interface User {
@@ -17,6 +18,9 @@ export interface User {
   last_platform: string;
   last_seen: string;
   message_count_at_last_compression: number;
+  telegram_user_id?: string;
+  discord_user_id?: string;
+  feishu_user_id?: string;
 }
 
 export class DatabaseManager {
@@ -51,12 +55,57 @@ export class DatabaseManager {
         platform TEXT NOT NULL,
         message_id TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        sender_name TEXT,
         FOREIGN KEY (user_id) REFERENCES users(id)
       );
 
       CREATE INDEX IF NOT EXISTS idx_messages_user_id ON messages(user_id);
       CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at);
     `);
+
+    // Migrate: Add platform user ID columns if they don't exist
+    this.migrateAddPlatformUserIds();
+    // Migrate: Add sender_name column if it doesn't exist
+    this.migrateAddSenderName();
+  }
+
+  private migrateAddPlatformUserIds(): void {
+    try {
+      // Check if columns exist by trying to select them
+      const columns = this.db.pragma('table_info(users)') as Array<{ name: string }>;
+      const columnNames = columns.map(c => c.name);
+
+      if (!columnNames.includes('telegram_user_id')) {
+        this.db.exec('ALTER TABLE users ADD COLUMN telegram_user_id TEXT');
+        console.log('[Database] Added telegram_user_id column');
+      }
+
+      if (!columnNames.includes('discord_user_id')) {
+        this.db.exec('ALTER TABLE users ADD COLUMN discord_user_id TEXT');
+        console.log('[Database] Added discord_user_id column');
+      }
+
+      if (!columnNames.includes('feishu_user_id')) {
+        this.db.exec('ALTER TABLE users ADD COLUMN feishu_user_id TEXT');
+        console.log('[Database] Added feishu_user_id column');
+      }
+    } catch (error) {
+      console.error('[Database] Migration error:', error);
+    }
+  }
+
+  private migrateAddSenderName(): void {
+    try {
+      const columns = this.db.pragma('table_info(messages)') as Array<{ name: string }>;
+      const columnNames = columns.map(c => c.name);
+
+      if (!columnNames.includes('sender_name')) {
+        this.db.exec('ALTER TABLE messages ADD COLUMN sender_name TEXT');
+        console.log('[Database] Added sender_name column');
+      }
+    } catch (error) {
+      console.error('[Database] Migration error:', error);
+    }
   }
 
   getOrCreateUser(platform: string): User {
@@ -82,12 +131,35 @@ export class DatabaseManager {
     return user;
   }
 
+  updateUserPlatformId(userId: number, platform: string, platformUserId: string): void {
+    const columnMap: Record<string, string> = {
+      'telegram': 'telegram_user_id',
+      'discord': 'discord_user_id',
+      'feishu': 'feishu_user_id',
+    };
+
+    const column = columnMap[platform];
+    if (!column) {
+      return;
+    }
+
+    // Skip if it's a group chat (contains @)
+    if (platformUserId.includes('@')) {
+      return;
+    }
+
+    this.db.prepare(`
+      UPDATE users SET ${column} = ? WHERE id = ?
+    `).run(platformUserId, userId);
+  }
+
   storeMessage(
     userId: number,
     role: 'user' | 'assistant',
     content: string,
     platform: string,
-    messageId: string = ''
+    messageId: string = '',
+    senderName?: string
   ): void {
     // Check if message already exists
     if (messageId) {
@@ -100,10 +172,13 @@ export class DatabaseManager {
       }
     }
 
+    // Use local time instead of UTC
+    const now = new Date().toISOString();
+
     this.db.prepare(`
-      INSERT INTO messages (user_id, role, content, platform, message_id, created_at)
-      VALUES (?, ?, ?, ?, ?, datetime('now'))
-    `).run(userId, role, content, platform, messageId || null);
+      INSERT INTO messages (user_id, role, content, platform, message_id, created_at, sender_name)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(userId, role, content, platform, messageId || null, now, senderName || null);
   }
 
   getConversationHistory(userId: number, limit: number = 100): Message[] {
@@ -218,13 +293,13 @@ export class DatabaseManager {
       .prepare(`
         SELECT * FROM messages
         WHERE user_id = ?
-        ORDER BY created_at DESC
+        ORDER BY created_at ASC
         LIMIT ? OFFSET ?
       `)
       .all(userId, limit, offset) as Message[];
 
     return {
-      messages: messages.reverse(),
+      messages: messages,
       total
     };
   }

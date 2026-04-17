@@ -50,12 +50,12 @@ export class GPTClient {
       hour: '2-digit',
       minute: '2-digit',
       weekday: 'long'
-    })}\n\n注意：对话历史中的时间戳格式为 (时间: YYYY/MM/DD HH:mm)，这是系统添加的，你的回复中不要包含这种格式的时间戳。\n`;
+    })}\n\n【重要规则】\n1. 对话历史中的时间戳格式 (时间: YYYY/MM/DD HH:mm) 是系统自动添加的元数据，仅供你了解对话发生的时间。\n2. 你的回复中绝对不要包含任何时间戳、时间标注、括号格式或类似的元数据格式。\n3. 不要模仿或重复这种 (时间: ...) 的格式。\n4. 直接用自然语言对话，就像平时聊天一样。\n`;
 
     // 添加场景信息
     const sceneInfo = isGroupChat 
-      ? `\n当前场景：群聊（有其他人在场）\n重要提醒：现在是在群聊中，其他人也能看到你的回复。请注意保持得体，避免过于私密或不适合公开的内容。\n---\n`
-      : `\n当前场景：私聊（只有你和主人）\n---\n`;
+      ? `\n当前场景：群聊（有其他人在场）\n\n【群聊行为规范】\n1. 保持得体和礼貌，避免过于私密或不适合公开的内容\n2. 注意其他成员也能看到你的回复\n3. 不要说只适合私下说的话\n4. 保持适当的距离感，不要过于亲密\n---\n`
+      : `\n当前场景：私聊（只有你和主人两个人）\n\n【私聊行为规范】\n1. 可以更加亲密和放松\n2. 可以说一些私密的话\n3. 可以表达更多的情感\n4. 这是你们两个人的私密空间\n---\n`;
 
     return personaContent + timeInfo + sceneInfo;
   }
@@ -69,12 +69,13 @@ export class GPTClient {
     const systemPrompt = await this.buildSystemPrompt(userId, isGroupChat);
 
     // Format conversation history with timestamps
-    // Use a format that's informative but less likely to be mimicked
+    // Only add timestamps to user messages, not assistant messages
+    // This prevents the AI from mimicking the timestamp format
     const formattedHistory = conversationHistory.map((msg) => {
       let content = msg.content;
       
-      // Add timestamp in a system-like format
-      if (msg.created_at) {
+      // Only add timestamp to user messages
+      if (msg.role === 'user' && msg.created_at) {
         const msgTime = new Date(msg.created_at);
         const timeStr = msgTime.toLocaleString('zh-CN', {
           timeZone: 'Asia/Shanghai',

@@ -18,6 +18,11 @@ function app() {
     messageOffset: 0,
     newMessage: '',
     isSending: false,
+    
+    // 配置管理
+    configContent: '',
+    configLoading: false,
+    configSaving: false,
 
     // 角色名称映射（英文 -> 中文）
     characterNameMap: {
@@ -117,7 +122,6 @@ function app() {
 
       this.editingMessageId = null;
       await this.loadMessages();
-      alert('保存成功');
     },
 
     async editCharacter(name) {
@@ -231,6 +235,51 @@ function app() {
         hour: '2-digit',
         minute: '2-digit'
       });
+    },
+
+    async loadConfig() {
+      this.configLoading = true;
+      try {
+        const res = await fetch('/api/config');
+        if (res.ok) {
+          const data = await res.json();
+          this.configContent = data.content;
+        } else {
+          const error = await res.json();
+          alert('加载配置失败：' + error.error);
+        }
+      } catch (error) {
+        alert('加载配置失败：' + error.message);
+      } finally {
+        this.configLoading = false;
+      }
+    },
+
+    async saveConfig() {
+      if (!confirm('确定保存配置吗？配置将在重启应用后生效。')) {
+        return;
+      }
+
+      this.configSaving = true;
+      try {
+        const res = await fetch('/api/config', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content: this.configContent })
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          alert(data.message || '保存成功');
+        } else {
+          const error = await res.json();
+          alert('保存失败：' + error.error);
+        }
+      } catch (error) {
+        alert('保存失败：' + error.message);
+      } finally {
+        this.configSaving = false;
+      }
     }
   };
 }

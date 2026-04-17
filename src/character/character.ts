@@ -67,9 +67,14 @@ export class Character {
       // Use user_id instead of platform to identify users
       const user = this.memoryManager.getOrCreateUser(message.user_id);
 
-      // Check if it's a group chat (user_id contains @)
+      // Update platform user ID (extract from user_id for private chats)
       const isGroup = message.user_id.includes('@');
+      if (!isGroup) {
+        // For private chats, user_id is the platform user ID
+        this.memoryManager.updateUserPlatformId(user.id, message.platform, message.user_id);
+      }
 
+      // Check if it's a group chat (user_id contains @)
       // Skip batching for group chats
       if (isGroup) {
         return await this.processMessage(user.id, message);
@@ -126,6 +131,8 @@ export class Character {
 
     // Prepare group context if available
     let groupContextText = '';
+    let fullMessageContent = message.content; // 用于存储的完整内容
+    
     if (isGroupChat && message.groupContext) {
       const members = message.groupContext.members.join('、');
       const recentChats = message.groupContext.recentMessages
@@ -134,6 +141,9 @@ export class Character {
         .join('\n');
       
       groupContextText = `\n\n[群聊上下文]\n群成员：${members}\n最近的聊天记录：\n${recentChats}\n[/群聊上下文]\n\n`;
+      
+      // 存储时包含群聊上下文，这样在web界面能看到完整对话
+      fullMessageContent = groupContextText + message.content;
     }
 
     const response = await this.gptClient!.chat(
@@ -146,9 +156,10 @@ export class Character {
     this.memoryManager!.storeMessage(
       userId,
       'user',
-      message.content,
+      fullMessageContent, // 存储包含上下文的完整内容
       message.platform,
-      message.platform_message_id
+      message.platform_message_id,
+      message.senderName
     );
 
     await this.saveResponse(userId, response, message);
@@ -179,6 +190,8 @@ export class Character {
 
       // Prepare group context if available
       let groupContextText = '';
+      let fullUserMessage = combinedContent;
+      
       if (isGroupChat && lastMessage.groupContext) {
         const members = lastMessage.groupContext.members.join('、');
         const recentChats = lastMessage.groupContext.recentMessages
@@ -187,6 +200,9 @@ export class Character {
           .join('\n');
         
         groupContextText = `\n\n[群聊上下文]\n群成员：${members}\n最近的聊天记录：\n${recentChats}\n[/群聊上下文]\n\n`;
+        
+        // 将群聊上下文合并到用户消息中，用于存储到数据库
+        fullUserMessage = groupContextText + combinedContent;
       }
 
       const response = await this.gptClient!.chat(
@@ -198,12 +214,16 @@ export class Character {
 
       // Store all user messages
       for (const msg of batch.messages) {
+        // 对于批量消息，只有最后一条包含群聊上下文
+        const contentToStore = (msg === lastMessage && isGroupChat) ? fullUserMessage : msg.content;
+        
         this.memoryManager!.storeMessage(
           userId,
           'user',
-          msg.content,
+          contentToStore,
           msg.platform,
-          msg.platform_message_id
+          msg.platform_message_id,
+          msg.senderName
         );
       }
 

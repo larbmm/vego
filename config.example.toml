@@ -53,3 +53,4 @@ random_probability = 0.3        # 30% chance to send when checked
 use_ai_judgment = true                    # Use AI to judge if should respond (costs tokens but smarter)
 question_response_probability = 0.6       # 60% chance to respond to questions (if not using AI)
 normal_response_probability = 0.2         # 20% chance to respond to normal messages (if not using AI)
+message_expiry_minutes = 30               # Group messages older than this will be ignored (in minutes)

@@ -1,13 +1,13 @@
 import { Client, GatewayIntentBits, Message as DiscordMessage } from 'discord.js';
 import { UnifiedMessage, MessageHandler } from '../router/message.js';
 import { GroupParticipation, GroupMessage } from './group-participation.js';
+import { sharedGroupCache } from './shared-group-cache.js';
 
 export class DiscordBot {
   private client: Client;
   private handler: MessageHandler;
   private characterName: string;
   private groupParticipation?: GroupParticipation;
-  private recentGroupMessages: Map<string, GroupMessage[]> = new Map();
   private botId: string = '';
 
   constructor(handler: MessageHandler, characterName: string) {
@@ -20,6 +20,19 @@ export class DiscordBot {
         GatewayIntentBits.DirectMessages,
         GatewayIntentBits.MessageContent,
       ],
+    });
+  }
+
+  // 过滤掉过期的消息
+  private async filterExpiredMessages(messages: GroupMessage[]): Promise<GroupMessage[]> {
+    const { config } = await import('../config/config.js');
+    const expiryMinutes = config.group_chat.message_expiry_minutes || 30;
+    const now = new Date();
+    const expiryMs = expiryMinutes * 60 * 1000;
+    
+    return messages.filter(msg => {
+      const messageAge = now.getTime() - msg.timestamp.getTime();
+      return messageAge < expiryMs;
     });
   }
 
@@ -82,10 +95,11 @@ export class DiscordBot {
 
         // For guild (server) messages, check if should respond
         if (isGuild && this.groupParticipation) {
-          if (!this.recentGroupMessages.has(channelId)) {
-            this.recentGroupMessages.set(channelId, []);
-          }
-          const recentMessages = this.recentGroupMessages.get(channelId)!;
+          let recentMessages = sharedGroupCache.getMessages(channelId);
+
+          // 先过滤掉过期的消息
+          recentMessages = await this.filterExpiredMessages(recentMessages);
+          sharedGroupCache.setMessages(channelId, recentMessages);
 
           const groupMessage: GroupMessage = {
             sender: senderName,
@@ -95,10 +109,8 @@ export class DiscordBot {
             isReplyToMe,
           };
 
-          recentMessages.push(groupMessage);
-          if (recentMessages.length > 10) {
-            recentMessages.shift();
-          }
+          sharedGroupCache.addMessage(channelId, groupMessage);
+          recentMessages = sharedGroupCache.getMessages(channelId);
 
           const { config } = await import('../config/config.js');
 
@@ -142,14 +154,15 @@ export class DiscordBot {
           platform_message_id: msg.id,
           content: msg.content,
           timestamp: new Date(),
+          senderName: isGuild ? senderName : undefined,
         };
 
         const response = await this.handler(message);
         await msg.reply(response);
 
-        // Store bot's response in recent messages
-        if (isGuild && this.recentGroupMessages.has(channelId)) {
-          this.recentGroupMessages.get(channelId)!.push({
+        // Store bot's response in shared cache
+        if (isGuild) {
+          sharedGroupCache.addMessage(channelId, {
             sender: this.characterName,
             content: response,
             timestamp: new Date(),
