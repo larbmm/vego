@@ -134,16 +134,24 @@ export class Character {
     let fullMessageContent = message.content; // 用于存储的完整内容
     
     if (isGroupChat && message.groupContext) {
+      // 过滤掉当前角色自己的消息，只保留其他人的
+      const otherMessages = message.groupContext.recentMessages.filter(
+        msg => msg.sender !== this.name
+      );
+      
       const members = message.groupContext.members.join('、');
-      const recentChats = message.groupContext.recentMessages
+      const recentChats = otherMessages
         .slice(-10) // 最多10条
         .map(msg => `${msg.sender}: ${msg.content}`)
         .join('\n');
       
-      groupContextText = `\n\n[群聊上下文]\n群成员：${members}\n最近的聊天记录：\n${recentChats}\n[/群聊上下文]\n\n`;
-      
-      // 存储时包含群聊上下文，这样在web界面能看到完整对话
-      fullMessageContent = groupContextText + message.content;
+      // 只有当有其他人的消息时才添加群聊上下文
+      if (recentChats) {
+        groupContextText = `\n\n[群聊上下文]\n群成员：${members}\n最近的聊天记录：\n${recentChats}\n[/群聊上下文]\n\n`;
+        
+        // 存储时包含群聊上下文，这样在web界面能看到完整对话
+        fullMessageContent = groupContextText + message.content;
+      }
     }
 
     const response = await this.gptClient!.chat(
@@ -193,16 +201,24 @@ export class Character {
       let fullUserMessage = combinedContent;
       
       if (isGroupChat && lastMessage.groupContext) {
+        // 过滤掉当前角色自己的消息，只保留其他人的
+        const otherMessages = lastMessage.groupContext.recentMessages.filter(
+          msg => msg.sender !== this.name
+        );
+        
         const members = lastMessage.groupContext.members.join('、');
-        const recentChats = lastMessage.groupContext.recentMessages
+        const recentChats = otherMessages
           .slice(-10)
           .map(msg => `${msg.sender}: ${msg.content}`)
           .join('\n');
         
-        groupContextText = `\n\n[群聊上下文]\n群成员：${members}\n最近的聊天记录：\n${recentChats}\n[/群聊上下文]\n\n`;
-        
-        // 将群聊上下文合并到用户消息中，用于存储到数据库
-        fullUserMessage = groupContextText + combinedContent;
+        // 只有当有其他人的消息时才添加群聊上下文
+        if (recentChats) {
+          groupContextText = `\n\n[群聊上下文]\n群成员：${members}\n最近的聊天记录：\n${recentChats}\n[/群聊上下文]\n\n`;
+          
+          // 将群聊上下文合并到用户消息中，用于存储到数据库
+          fullUserMessage = groupContextText + combinedContent;
+        }
       }
 
       const response = await this.gptClient!.chat(
