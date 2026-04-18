@@ -1,6 +1,7 @@
 function app() {
   return {
     currentView: 'characters',
+    mobileMenuOpen: false,
     characters: [],
     selectedCharacter: '',
     messages: [],
@@ -23,6 +24,12 @@ function app() {
     configContent: '',
     configLoading: false,
     configSaving: false,
+
+    // 系统状态
+    status: {},
+    logs: [],
+    logFilter: 'all',
+    autoRefreshInterval: null,
 
     // 角色名称映射（英文 -> 中文）
     characterNameMap: {
@@ -280,6 +287,68 @@ function app() {
       } finally {
         this.configSaving = false;
       }
+    },
+
+    // 系统状态相关方法
+    async loadStatus() {
+      try {
+        const res = await fetch('/api/status');
+        this.status = await res.json();
+      } catch (error) {
+        console.error('Failed to load status:', error);
+      }
+    },
+
+    async loadLogs() {
+      try {
+        const res = await fetch('/api/logs?limit=200');
+        const data = await res.json();
+        this.logs = data.logs;
+      } catch (error) {
+        console.error('Failed to load logs:', error);
+      }
+    },
+
+    async clearLogs() {
+      if (!confirm('确定清空所有日志吗？')) return;
+      
+      try {
+        await fetch('/api/logs', { method: 'DELETE' });
+        this.logs = [];
+        alert('日志已清空');
+      } catch (error) {
+        alert('清空失败：' + error.message);
+      }
+    },
+
+    startAutoRefresh() {
+      // 清除旧的定时器
+      if (this.autoRefreshInterval) {
+        clearInterval(this.autoRefreshInterval);
+      }
+      
+      // 每5秒自动刷新状态和日志
+      this.autoRefreshInterval = setInterval(() => {
+        if (this.currentView === 'status') {
+          this.loadStatus();
+          this.loadLogs();
+        }
+      }, 5000);
+    },
+
+    get filteredLogs() {
+      if (this.logFilter === 'all') {
+        return this.logs;
+      }
+      return this.logs.filter(log => log.level === this.logFilter);
+    },
+
+    formatLogTime(timestamp) {
+      const date = new Date(timestamp);
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      const seconds = String(date.getSeconds()).padStart(2, '0');
+      return `${hours}:${minutes}:${seconds}`;
     }
   };
 }

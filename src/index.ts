@@ -1,4 +1,5 @@
 import { PersonaBotApp } from './app.js';
+import './web/logger.js'; // Initialize logger to intercept console
 
 let appInstance: PersonaBotApp | null = null;
 
