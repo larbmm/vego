@@ -31,6 +31,10 @@ function findVegoHome(): string {
 const VEGO_HOME = findVegoHome();
 const CONFIG_PATH = path.join(VEGO_HOME, 'config.toml');
 
+export function getVegoHome(): string {
+  return VEGO_HOME;
+}
+
 export interface SchedulerConfig {
   enabled: boolean;
   schedule_time: string;
@@ -66,6 +70,7 @@ export interface MemoryConfig {
 
 export interface CharacterConfig {
   name: string;
+  display_name?: string;  // 中文显示名称（可选）
   path: string;
   telegram_bot_token?: string;
   discord_bot_token?: string;
@@ -137,6 +142,7 @@ function loadConfig(): Config {
     const charData = charConfig as any;
     config.character[charName] = {
       name: charName,
+      display_name: charData.display_name,  // 添加这一行
       path: charData.path,
       telegram_bot_token: charData.telegram_bot_token,
       discord_bot_token: charData.discord_bot_token,
@@ -148,7 +154,14 @@ function loadConfig(): Config {
   return config;
 }
 
-export const config = loadConfig();
+export let config = loadConfig();
+
+export function reloadConfig(): Config {
+  const newConfig = loadConfig();
+  // Update the exported config object
+  Object.assign(config, newConfig);
+  return config;
+}
 
 export function getWorkspacePath(charConfig: CharacterConfig): string {
   return path.join(VEGO_HOME, charConfig.path);

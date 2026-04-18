@@ -611,23 +611,64 @@
     x-show="showNewCharacterModal" 
     x-cloak
     class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-    <div class="bg-white rounded-lg p-6 w-full max-w-md">
+    <div class="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
       <h3 class="text-lg md:text-xl font-bold mb-4">新增角色</h3>
-      <input 
-        x-model="newCharacterName"
-        type="text" 
-        placeholder="角色名称（英文）"
-        class="w-full border rounded-lg px-4 py-2 mb-4 text-sm">
+      
+      <div class="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm">
+        <p class="text-blue-800 mb-2">📝 <strong>创建说明：</strong></p>
+        <ul class="text-blue-700 text-xs space-y-1 ml-4 list-disc">
+          <li>英文ID用于系统内部，只能使用小写字母和下划线</li>
+          <li>中文名称用于界面显示，可以使用任何字符</li>
+          <li>可以从现有角色复制人设，快速创建相似角色</li>
+          <li>系统会自动创建完整的人设模板</li>
+          <li>创建后需要在"配置管理"中添加 bot token</li>
+          <li>配置完成后需要重启应用才能生效</li>
+        </ul>
+      </div>
+      
+      <div class="mb-4">
+        <label class="block text-sm font-medium mb-2">英文ID（必填）</label>
+        <input 
+          x-model="newCharacterName"
+          type="text" 
+          placeholder="例如：alice 或 xiao_ming"
+          class="w-full border rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <p class="text-xs text-gray-500 mt-1">用于文件夹名称和系统标识</p>
+      </div>
+      
+      <div class="mb-4">
+        <label class="block text-sm font-medium mb-2">中文名称（可选）</label>
+        <input 
+          x-model="newCharacterDisplayName"
+          type="text" 
+          placeholder="例如：爱丽丝 或 小明"
+          class="w-full border rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <p class="text-xs text-gray-500 mt-1">用于界面显示，不填则使用英文ID</p>
+      </div>
+      
+      <div class="mb-4">
+        <label class="block text-sm font-medium mb-2">复制自（可选）</label>
+        <select 
+          x-model="newCharacterCopyFrom"
+          class="w-full border rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="">从模板创建</option>
+          <template x-for="char in characters" :key="char.name">
+            <option :value="char.name" x-text="getCharacterDisplayName(char.name) + ' (' + char.name + ')'"></option>
+          </template>
+        </select>
+        <p class="text-xs text-gray-500 mt-1">选择一个现有角色，复制其人设文件</p>
+      </div>
+      
       <div class="flex flex-col sm:flex-row justify-end gap-2">
         <button 
-          @click="showNewCharacterModal = false; newCharacterName = ''"
+          @click="showNewCharacterModal = false; newCharacterName = ''; newCharacterDisplayName = ''; newCharacterCopyFrom = ''"
           class="px-4 py-2 border rounded-lg hover:bg-gray-100 text-sm">
           取消
         </button>
         <button 
           @click="createCharacter()"
           class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm">
-          创建
+          创建角色
         </button>
       </div>
     </div>
