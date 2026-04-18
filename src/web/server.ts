@@ -2,8 +2,10 @@ import express from 'express';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as toml from 'toml';
+import * as os from 'os';
 import { config, getWorkspacePath, getDatabasePath } from '../config/config.js';
 import { DatabaseManager } from '../memory/database.js';
+import { WebLogger } from './logger.js';
 
 const app = express();
 app.use(express.json());
@@ -328,6 +330,73 @@ app.put('/api/config', async (req, res) => {
     });
   }
 });
+
+// API: Get system status
+app.get('/api/status', (req, res) => {
+  const uptime = process.uptime();
+  const memUsage = process.memoryUsage();
+  
+  const status = {
+    uptime: {
+      seconds: Math.floor(uptime),
+      formatted: formatUptime(uptime),
+    },
+    memory: {
+      rss: Math.round(memUsage.rss / 1024 / 1024), // MB
+      heapUsed: Math.round(memUsage.heapUsed / 1024 / 1024), // MB
+      heapTotal: Math.round(memUsage.heapTotal / 1024 / 1024), // MB
+    },
+    system: {
+      platform: os.platform(),
+      arch: os.arch(),
+      nodeVersion: process.version,
+      cpus: os.cpus().length,
+      totalMemory: Math.round(os.totalmem() / 1024 / 1024 / 1024), // GB
+      freeMemory: Math.round(os.freemem() / 1024 / 1024 / 1024), // GB
+    },
+    characters: Object.keys(config.character).map(name => ({
+      name,
+      enabled: true,
+      hasTelegram: !!config.character[name].telegram_bot_token,
+      hasDiscord: !!config.character[name].discord_bot_token,
+    })),
+    config: {
+      scheduler_enabled: config.scheduler?.enabled || false,
+      proactive_chat_enabled: config.proactive_chat?.enabled || false,
+      group_chat_ai_judgment: config.group_chat?.use_ai_judgment || false,
+    },
+  };
+  
+  res.json(status);
+});
+
+// API: Get logs
+app.get('/api/logs', (req, res) => {
+  const { limit = '100' } = req.query;
+  const logs = WebLogger.getLogs(parseInt(limit as string));
+  res.json({ logs });
+});
+
+// API: Clear logs
+app.delete('/api/logs', (req, res) => {
+  WebLogger.clear();
+  res.json({ success: true });
+});
+
+function formatUptime(seconds: number): string {
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = Math.floor(seconds % 60);
+  
+  const parts = [];
+  if (days > 0) parts.push(`${days}天`);
+  if (hours > 0) parts.push(`${hours}小时`);
+  if (minutes > 0) parts.push(`${minutes}分钟`);
+  if (secs > 0 || parts.length === 0) parts.push(`${secs}秒`);
+  
+  return parts.join(' ');
+}
 
 export function startWebServer(port: number = 3000): void {
   app.listen(port, () => {

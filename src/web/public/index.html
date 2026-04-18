@@ -20,43 +20,85 @@
       max-width: 70%;
       font-size: 0.875rem; /* 14px */
     }
+    
+    /* 移动端侧边栏样式 */
+    @media (max-width: 768px) {
+      .mobile-sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 80%;
+        max-width: 300px;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease-in-out;
+        z-index: 40;
+      }
+      .mobile-sidebar.open {
+        transform: translateX(0);
+      }
+      .mobile-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 30;
+      }
+    }
   </style>
 </head>
 <body class="bg-gray-100" x-data="app()" x-init="init()">
   
   <!-- Header -->
-  <div class="bg-blue-600 text-white p-4 shadow-lg">
-    <h1 class="text-2xl font-bold">🤖 Vego 管理面板</h1>
+  <div class="bg-blue-600 text-white p-4 shadow-lg flex items-center justify-between">
+    <!-- 移动端菜单按钮 -->
+    <button 
+      @click="mobileMenuOpen = !mobileMenuOpen"
+      class="md:hidden text-white focus:outline-none">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+      </svg>
+    </button>
+    <h1 class="text-xl md:text-2xl font-bold">🤖 Vego 管理面板</h1>
+    <div class="w-6 md:hidden"></div> <!-- 占位，保持标题居中 -->
   </div>
+
+  <!-- 移动端遮罩层 -->
+  <div 
+    x-show="mobileMenuOpen" 
+    @click="mobileMenuOpen = false"
+    x-cloak
+    class="mobile-overlay md:hidden"></div>
 
   <div class="flex h-screen">
     
     <!-- Sidebar -->
-    <div class="w-64 bg-white shadow-lg overflow-y-auto">
+    <div 
+      :class="mobileMenuOpen ? 'open' : ''"
+      class="w-64 bg-white shadow-lg overflow-y-auto md:relative md:translate-x-0 mobile-sidebar">
       <nav class="p-4">
         <button 
-          @click="currentView = 'characters'" 
+          @click="currentView = 'characters'; mobileMenuOpen = false" 
           :class="currentView === 'characters' ? 'bg-blue-100 text-blue-600' : 'text-gray-700'"
           class="w-full text-left px-4 py-3 rounded-lg mb-2 hover:bg-gray-100 transition">
           👥 角色管理
         </button>
         
         <button 
-          @click="currentView = 'chat'" 
+          @click="currentView = 'chat'; mobileMenuOpen = false" 
           :class="currentView === 'chat' ? 'bg-blue-100 text-blue-600' : 'text-gray-700'"
           class="w-full text-left px-4 py-3 rounded-lg mb-2 hover:bg-gray-100 transition">
           💬 对话管理
         </button>
         
         <button 
-          @click="currentView = 'config'" 
+          @click="currentView = 'config'; mobileMenuOpen = false" 
           :class="currentView === 'config' ? 'bg-blue-100 text-blue-600' : 'text-gray-700'"
           class="w-full text-left px-4 py-3 rounded-lg mb-2 hover:bg-gray-100 transition">
           ⚙️ 配置管理
         </button>
         
         <button 
-          @click="currentView = 'status'" 
+          @click="currentView = 'status'; mobileMenuOpen = false" 
           :class="currentView === 'status' ? 'bg-blue-100 text-blue-600' : 'text-gray-700'"
           class="w-full text-left px-4 py-3 rounded-lg mb-2 hover:bg-gray-100 transition">
           📊 系统状态
@@ -65,16 +107,16 @@
     </div>
 
     <!-- Main Content -->
-    <div class="flex-1 overflow-y-auto p-6">
+    <div class="flex-1 overflow-y-auto p-4 md:p-6">
       
       <!-- 角色管理 -->
       <div x-show="currentView === 'characters'" x-cloak>
-        <div class="bg-white rounded-lg shadow p-6">
-          <div class="flex justify-between items-center mb-6">
-            <h2 class="text-2xl font-bold">角色管理</h2>
+        <div class="bg-white rounded-lg shadow p-4 md:p-6">
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+            <h2 class="text-xl md:text-2xl font-bold">角色管理</h2>
             <button 
               @click="showNewCharacterModal = true"
-              class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
+              class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition w-full sm:w-auto">
               + 新增角色
             </button>
           </div>
@@ -83,20 +125,20 @@
           <div class="space-y-4">
             <template x-for="char in characters" :key="char.name">
               <div class="border rounded-lg p-4 hover:shadow-md transition">
-                <div class="flex justify-between items-center">
-                  <div>
-                    <h3 class="text-xl font-semibold" x-text="getCharacterDisplayName(char.name)"></h3>
-                    <p class="text-gray-500 text-sm" x-text="char.path"></p>
+                <div class="flex flex-col sm:flex-row justify-between items-start gap-4">
+                  <div class="flex-1">
+                    <h3 class="text-lg md:text-xl font-semibold" x-text="getCharacterDisplayName(char.name)"></h3>
+                    <p class="text-gray-500 text-xs md:text-sm break-all" x-text="char.path"></p>
                   </div>
-                  <div class="space-x-2">
+                  <div class="flex gap-2 w-full sm:w-auto">
                     <button 
                       @click="editCharacter(char.name)"
-                      class="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 transition">
+                      class="flex-1 sm:flex-none bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 transition text-sm">
                       编辑
                     </button>
                     <button 
                       @click="deleteCharacter(char.name)"
-                      class="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 transition">
+                      class="flex-1 sm:flex-none bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 transition text-sm">
                       删除
                     </button>
                   </div>
@@ -107,17 +149,17 @@
         </div>
 
         <!-- 编辑角色人设 -->
-        <div x-show="editingCharacter" x-cloak class="bg-white rounded-lg shadow p-6 mt-6">
-          <h3 class="text-xl font-bold mb-4">
+        <div x-show="editingCharacter" x-cloak class="bg-white rounded-lg shadow p-4 md:p-6 mt-6">
+          <h3 class="text-lg md:text-xl font-bold mb-4">
             编辑角色：<span x-text="getCharacterDisplayName(editingCharacter)"></span>
           </h3>
           
-          <div class="grid grid-cols-2 gap-4 mb-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
             <template x-for="file in personaFiles" :key="file.name">
               <button 
                 @click="currentPersonaFile = file.name; currentPersonaContent = file.content"
                 :class="currentPersonaFile === file.name ? 'bg-blue-100 border-blue-500' : 'bg-gray-50'"
-                class="border-2 p-3 rounded-lg text-left hover:shadow transition">
+                class="border-2 p-3 rounded-lg text-left hover:shadow transition text-sm">
                 📝 <span x-text="file.name"></span>
               </button>
             </template>
@@ -127,10 +169,10 @@
             <label class="block text-sm font-medium mb-2" x-text="currentPersonaFile"></label>
             <textarea 
               x-model="currentPersonaContent"
-              class="w-full h-96 p-4 border rounded-lg font-mono text-sm"
+              class="w-full h-64 md:h-96 p-4 border rounded-lg font-mono text-xs md:text-sm"
               placeholder="编辑 Markdown 内容..."></textarea>
             
-            <div class="mt-4 flex justify-end space-x-2">
+            <div class="mt-4 flex flex-col sm:flex-row justify-end gap-2">
               <button 
                 @click="editingCharacter = null; currentPersonaFile = null"
                 class="px-4 py-2 border rounded-lg hover:bg-gray-100 transition">
@@ -148,18 +190,18 @@
 
       <!-- 对话管理 -->
       <div x-show="currentView === 'chat'" x-cloak>
-        <div class="bg-white rounded-lg shadow p-6">
-          <div class="flex justify-between items-center mb-6">
-            <h2 class="text-2xl font-bold">
+        <div class="bg-white rounded-lg shadow p-4 md:p-6">
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+            <h2 class="text-xl md:text-2xl font-bold">
               对话管理
-              <span x-show="selectedCharacter" class="text-gray-500 text-lg ml-2">
+              <span x-show="selectedCharacter" class="text-gray-500 text-base md:text-lg ml-2 block sm:inline">
                 - <span x-text="getCharacterDisplayName(selectedCharacter)"></span>
               </span>
             </h2>
             <select 
               x-model="selectedCharacter" 
               @change="loadMessages()"
-              class="border rounded-lg px-4 py-2">
+              class="border rounded-lg px-4 py-2 w-full sm:w-auto text-sm">
               <option value="">选择角色</option>
               <template x-for="char in characters" :key="char.name">
                 <option :value="char.name" x-text="getCharacterDisplayName(char.name)"></option>
@@ -169,36 +211,36 @@
 
           <div x-show="selectedCharacter" x-cloak>
             <!-- 操作按钮 -->
-            <div class="mb-4 flex justify-between items-center">
-              <div>
+            <div class="mb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div class="text-sm">
                 <span class="text-gray-600">共 <span x-text="totalMessages"></span> 条消息</span>
                 <span x-show="selectedMessages.length > 0" class="ml-4 text-blue-600">
                   已选中 <span x-text="selectedMessages.length"></span> 条
                 </span>
               </div>
-              <div class="space-x-2">
+              <div class="flex flex-wrap gap-2 w-full sm:w-auto">
                 <button 
                   x-show="selectedMessages.length > 0"
                   @click="clearSelection()"
-                  class="bg-gray-400 text-white px-4 py-2 rounded-lg hover:bg-gray-500 transition">
+                  class="flex-1 sm:flex-none bg-gray-400 text-white px-3 py-2 rounded-lg hover:bg-gray-500 transition text-sm">
                   清除选择
                 </button>
                 <button 
                   x-show="selectedMessages.length > 0"
                   @click="deleteSelectedMessages()"
-                  class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition">
+                  class="flex-1 sm:flex-none bg-red-500 text-white px-3 py-2 rounded-lg hover:bg-red-600 transition text-sm">
                   删除选中
                 </button>
                 <button 
                   @click="clearAllMessages()"
-                  class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition">
+                  class="flex-1 sm:flex-none bg-gray-500 text-white px-3 py-2 rounded-lg hover:bg-gray-600 transition text-sm">
                   删除所有
                 </button>
               </div>
             </div>
 
             <!-- 聊天气泡界面 -->
-            <div class="border rounded-lg p-4 h-[500px] overflow-y-auto bg-gray-50" id="chatContainer">
+            <div class="border rounded-lg p-4 h-[400px] md:h-[500px] overflow-y-auto bg-gray-50" id="chatContainer">
               <template x-for="msg in messages" :key="msg.id">
                 <div class="mb-4 flex items-start">
                   
@@ -229,7 +271,7 @@
                     
                     <div 
                       x-show="editingMessageId !== msg.id"
-                      class="whitespace-pre-wrap" 
+                      class="whitespace-pre-wrap text-sm" 
                       x-text="msg.content"></div>
                     
                     <div x-show="editingMessageId === msg.id" x-cloak>
@@ -267,12 +309,12 @@
                 @keydown.enter="sendMessage()"
                 type="text" 
                 placeholder="输入消息，按 Enter 发送..."
-                class="flex-1 border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                class="flex-1 border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                 :disabled="isSending">
               <button 
                 @click="sendMessage()"
                 :disabled="isSending || !newMessage.trim()"
-                class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed">
+                class="bg-blue-600 text-white px-4 md:px-6 py-2 rounded-lg hover:bg-blue-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed text-sm">
                 发送
               </button>
             </div>
@@ -282,7 +324,7 @@
               <button 
                 @click="loadMoreMessages()"
                 x-show="messages.length < totalMessages"
-                class="px-4 py-2 border rounded-lg hover:bg-gray-100 transition">
+                class="px-4 py-2 border rounded-lg hover:bg-gray-100 transition text-sm">
                 加载更多
               </button>
             </div>
@@ -292,21 +334,21 @@
 
       <!-- 配置管理 -->
       <div x-show="currentView === 'config'" x-cloak x-init="if (currentView === 'config' && !configContent) loadConfig()">
-        <div class="bg-white rounded-lg shadow p-6">
-          <div class="flex justify-between items-center mb-6">
-            <h2 class="text-2xl font-bold">配置管理</h2>
-            <div class="space-x-2">
+        <div class="bg-white rounded-lg shadow p-4 md:p-6">
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+            <h2 class="text-xl md:text-2xl font-bold">配置管理</h2>
+            <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
               <button 
                 @click="loadConfig()"
                 :disabled="configLoading"
-                class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition disabled:bg-gray-400">
+                class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition disabled:bg-gray-400 text-sm">
                 <span x-show="!configLoading">🔄 重新加载</span>
                 <span x-show="configLoading">加载中...</span>
               </button>
               <button 
                 @click="saveConfig()"
                 :disabled="configSaving || configLoading"
-                class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition disabled:bg-gray-400">
+                class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition disabled:bg-gray-400 text-sm">
                 <span x-show="!configSaving">💾 保存配置</span>
                 <span x-show="configSaving">保存中...</span>
               </button>
@@ -314,14 +356,14 @@
           </div>
 
           <div class="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <p class="text-sm text-yellow-800">
+            <p class="text-xs md:text-sm text-yellow-800">
               ⚠️ <strong>注意：</strong>修改配置后需要重启应用才能生效。保存前会自动备份当前配置。
             </p>
           </div>
 
           <div class="mb-4">
-            <h3 class="text-lg font-semibold mb-2">配置文件 (TOML 格式)</h3>
-            <p class="text-sm text-gray-600 mb-4">
+            <h3 class="text-base md:text-lg font-semibold mb-2">配置文件 (TOML 格式)</h3>
+            <p class="text-xs md:text-sm text-gray-600 mb-4">
               可以修改 API 密钥、模型、网址、角色配置、定时任务等设置。
             </p>
           </div>
@@ -333,11 +375,11 @@
           <div x-show="!configLoading && configContent" x-cloak>
             <textarea 
               x-model="configContent"
-              class="w-full h-[600px] p-4 border rounded-lg font-mono text-sm bg-gray-50"
+              class="w-full h-[400px] md:h-[600px] p-4 border rounded-lg font-mono text-xs md:text-sm bg-gray-50"
               placeholder="配置内容..."
               spellcheck="false"></textarea>
             
-            <div class="mt-4 text-sm text-gray-600">
+            <div class="mt-4 text-xs md:text-sm text-gray-600">
               <details class="cursor-pointer">
                 <summary class="font-semibold mb-2">📖 配置说明</summary>
                 <div class="pl-4 space-y-2 mt-2">
@@ -387,10 +429,177 @@
       </div>
 
       <!-- 系统状态 -->
-      <div x-show="currentView === 'status'" x-cloak>
-        <div class="bg-white rounded-lg shadow p-6">
-          <h2 class="text-2xl font-bold mb-6">系统状态</h2>
-          <p class="text-gray-500">系统状态功能开发中...</p>
+      <div x-show="currentView === 'status'" x-cloak x-init="if (currentView === 'status') { loadStatus(); startAutoRefresh(); }">
+        <div class="bg-white rounded-lg shadow p-4 md:p-6 mb-6">
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+            <h2 class="text-xl md:text-2xl font-bold">系统状态</h2>
+            <button 
+              @click="loadStatus()"
+              class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition text-sm">
+              🔄 刷新
+            </button>
+          </div>
+
+          <!-- 系统信息卡片 -->
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+            <!-- 运行时间 -->
+            <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4 border border-blue-200">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-sm text-blue-600 font-medium">⏱️ 运行时间</span>
+              </div>
+              <div class="text-2xl font-bold text-blue-900" x-text="status.uptime?.formatted || '-'"></div>
+            </div>
+
+            <!-- 内存使用 -->
+            <div class="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-4 border border-green-200">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-sm text-green-600 font-medium">💾 内存使用</span>
+              </div>
+              <div class="text-2xl font-bold text-green-900" x-text="status.memory ? status.memory.heapUsed + ' MB' : '-'"></div>
+              <div class="text-xs text-green-600 mt-1" x-text="status.memory ? '总计: ' + status.memory.heapTotal + ' MB' : ''"></div>
+            </div>
+
+            <!-- 角色数量 -->
+            <div class="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-4 border border-purple-200">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-sm text-purple-600 font-medium">👥 角色数量</span>
+              </div>
+              <div class="text-2xl font-bold text-purple-900" x-text="status.characters?.length || 0"></div>
+            </div>
+
+            <!-- 系统平台 -->
+            <div class="bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-lg p-4 border border-yellow-200">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-sm text-yellow-600 font-medium">🖥️ 系统平台</span>
+              </div>
+              <div class="text-lg font-bold text-yellow-900" x-text="status.system?.platform || '-'"></div>
+              <div class="text-xs text-yellow-600 mt-1" x-text="status.system?.arch || ''"></div>
+            </div>
+
+            <!-- Node版本 -->
+            <div class="bg-gradient-to-br from-red-50 to-red-100 rounded-lg p-4 border border-red-200">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-sm text-red-600 font-medium">⚙️ Node.js</span>
+              </div>
+              <div class="text-lg font-bold text-red-900" x-text="status.system?.nodeVersion || '-'"></div>
+            </div>
+
+            <!-- CPU核心 -->
+            <div class="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-lg p-4 border border-indigo-200">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-sm text-indigo-600 font-medium">🔧 CPU核心</span>
+              </div>
+              <div class="text-2xl font-bold text-indigo-900" x-text="status.system?.cpus || '-'"></div>
+            </div>
+          </div>
+
+          <!-- 角色状态 -->
+          <div class="mb-6">
+            <h3 class="text-lg font-semibold mb-3">角色状态</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <template x-for="char in status.characters" :key="char.name">
+                <div class="border rounded-lg p-3 bg-gray-50">
+                  <div class="flex items-center justify-between">
+                    <span class="font-medium" x-text="getCharacterDisplayName(char.name)"></span>
+                    <div class="flex gap-2">
+                      <span x-show="char.hasTelegram" class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">Telegram</span>
+                      <span x-show="char.hasDiscord" class="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded">Discord</span>
+                    </div>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </div>
+
+          <!-- 功能状态 -->
+          <div>
+            <h3 class="text-lg font-semibold mb-3">功能状态</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div class="flex items-center gap-2 p-3 border rounded-lg bg-gray-50">
+                <span x-show="status.config?.scheduler_enabled" class="text-green-500">✅</span>
+                <span x-show="!status.config?.scheduler_enabled" class="text-gray-400">⭕</span>
+                <span class="text-sm">定时任务</span>
+              </div>
+              <div class="flex items-center gap-2 p-3 border rounded-lg bg-gray-50">
+                <span x-show="status.config?.proactive_chat_enabled" class="text-green-500">✅</span>
+                <span x-show="!status.config?.proactive_chat_enabled" class="text-gray-400">⭕</span>
+                <span class="text-sm">主动聊天</span>
+              </div>
+              <div class="flex items-center gap-2 p-3 border rounded-lg bg-gray-50">
+                <span x-show="status.config?.group_chat_ai_judgment" class="text-green-500">✅</span>
+                <span x-show="!status.config?.group_chat_ai_judgment" class="text-gray-400">⭕</span>
+                <span class="text-sm">AI群聊判断</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 运行日志 -->
+        <div class="bg-white rounded-lg shadow p-4 md:p-6">
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
+            <h3 class="text-lg font-semibold">运行日志</h3>
+            <div class="flex gap-2 w-full sm:w-auto">
+              <button 
+                @click="loadLogs()"
+                class="flex-1 sm:flex-none bg-gray-500 text-white px-3 py-2 rounded-lg hover:bg-gray-600 transition text-sm">
+                🔄 刷新
+              </button>
+              <button 
+                @click="clearLogs()"
+                class="flex-1 sm:flex-none bg-red-500 text-white px-3 py-2 rounded-lg hover:bg-red-600 transition text-sm">
+                🗑️ 清空
+              </button>
+            </div>
+          </div>
+
+          <!-- 日志过滤 -->
+          <div class="mb-4 flex gap-2 flex-wrap">
+            <button 
+              @click="logFilter = 'all'"
+              :class="logFilter === 'all' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'"
+              class="px-3 py-1 rounded text-sm">
+              全部
+            </button>
+            <button 
+              @click="logFilter = 'info'"
+              :class="logFilter === 'info' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'"
+              class="px-3 py-1 rounded text-sm">
+              信息
+            </button>
+            <button 
+              @click="logFilter = 'warn'"
+              :class="logFilter === 'warn' ? 'bg-yellow-600 text-white' : 'bg-gray-200 text-gray-700'"
+              class="px-3 py-1 rounded text-sm">
+              警告
+            </button>
+            <button 
+              @click="logFilter = 'error'"
+              :class="logFilter === 'error' ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-700'"
+              class="px-3 py-1 rounded text-sm">
+              错误
+            </button>
+          </div>
+
+          <!-- 日志列表 -->
+          <div class="bg-gray-900 text-gray-100 rounded-lg p-4 h-[400px] overflow-y-auto font-mono text-xs">
+            <template x-for="log in filteredLogs" :key="log.timestamp">
+              <div class="mb-2 hover:bg-gray-800 p-1 rounded">
+                <span class="text-gray-500" x-text="formatLogTime(log.timestamp)"></span>
+                <span 
+                  :class="{
+                    'text-blue-400': log.level === 'info',
+                    'text-yellow-400': log.level === 'warn',
+                    'text-red-400': log.level === 'error'
+                  }"
+                  class="ml-2 font-bold"
+                  x-text="'[' + log.level.toUpperCase() + ']'"></span>
+                <span class="ml-2" x-text="log.message"></span>
+              </div>
+            </template>
+            <div x-show="logs.length === 0" class="text-gray-500 text-center py-8">
+              暂无日志
+            </div>
+          </div>
         </div>
       </div>
 
@@ -401,23 +610,23 @@
   <div 
     x-show="showNewCharacterModal" 
     x-cloak
-    class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-    <div class="bg-white rounded-lg p-6 w-96">
-      <h3 class="text-xl font-bold mb-4">新增角色</h3>
+    class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-lg p-6 w-full max-w-md">
+      <h3 class="text-lg md:text-xl font-bold mb-4">新增角色</h3>
       <input 
         x-model="newCharacterName"
         type="text" 
         placeholder="角色名称（英文）"
-        class="w-full border rounded-lg px-4 py-2 mb-4">
-      <div class="flex justify-end space-x-2">
+        class="w-full border rounded-lg px-4 py-2 mb-4 text-sm">
+      <div class="flex flex-col sm:flex-row justify-end gap-2">
         <button 
           @click="showNewCharacterModal = false; newCharacterName = ''"
-          class="px-4 py-2 border rounded-lg hover:bg-gray-100">
+          class="px-4 py-2 border rounded-lg hover:bg-gray-100 text-sm">
           取消
         </button>
         <button 
           @click="createCharacter()"
-          class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+          class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm">
           创建
         </button>
       </div>
