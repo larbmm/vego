@@ -1,14 +1,8 @@
-.git/
-.kiro/
-.vego/
-backups/
+.*/
 .env
 .env.local
 node_modules/
 *.db
 *.log
 .DS_Store
-.npmignore
-.other/
 build/
-.vscode/
