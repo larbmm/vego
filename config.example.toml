@@ -6,21 +6,6 @@ key = "your-api-key"
 model = "Pro/moonshotai/Kimi-K2.5"
 base = "https://api.siliconflow.cn/v1"
 
-# Character Configuration
-# You can define multiple characters, each with their own workspace and bot tokens
-
-[character.yuyan]
-path = "workspace_yuyan"
-telegram_bot_token = "your-telegram-bot-token"
-discord_bot_token = "your-discord-bot-token"
-# feishu_app_id = "your-feishu-app-id"
-# feishu_app_secret = "your-feishu-app-secret"
-
-[character.yunxiu]
-path = "workspace_yunxiu"
-telegram_bot_token = "your-telegram-bot-token"
-# discord_bot_token = "your-discord-bot-token"
-
 # Memory Configuration
 [memory]
 max_history_messages = 100      # Maximum messages to load into context
@@ -54,3 +39,23 @@ use_ai_judgment = true                    # Use AI to judge if should respond (c
 question_response_probability = 0.6       # 60% chance to respond to questions (if not using AI)
 normal_response_probability = 0.2         # 20% chance to respond to normal messages (if not using AI)
 message_expiry_minutes = 30               # Group messages older than this will be ignored (in minutes)
+
+# ============================================
+# Character Configuration
+# ============================================
+# You can define multiple characters, each with their own workspace and bot tokens
+# All character configurations should be placed at the end of this file
+
+[character.yuyan]
+display_name = "语嫣"            # Display name (optional, for UI display)
+path = "workspace_yuyan"
+telegram_bot_token = "your-telegram-bot-token"
+discord_bot_token = "your-discord-bot-token"
+# feishu_app_id = "your-feishu-app-id"
+# feishu_app_secret = "your-feishu-app-secret"
+
+[character.yunxiu]
+display_name = "云袖"            # Display name (optional)
+path = "workspace_yunxiu"
+telegram_bot_token = "your-telegram-bot-token"
+# discord_bot_token = "your-discord-bot-token"

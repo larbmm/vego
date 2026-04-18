@@ -15,6 +15,8 @@ function app() {
     currentPersonaContent: '',
     showNewCharacterModal: false,
     newCharacterName: '',
+    newCharacterDisplayName: '',
+    newCharacterCopyFrom: '',
     messageLimit: 50,
     messageOffset: 0,
     newMessage: '',
@@ -31,19 +33,14 @@ function app() {
     logFilter: 'all',
     autoRefreshInterval: null,
 
-    // 角色名称映射（英文 -> 中文）
-    characterNameMap: {
-      'xiyue': '曦月',
-      'qianqian': '芊芊',
-      'wanqing': '婉清',
-    },
-
     async init() {
       await this.loadCharacters();
     },
 
     getCharacterDisplayName(name) {
-      return this.characterNameMap[name] || name;
+      // 从角色列表中查找display_name
+      const char = this.characters.find(c => c.name === name);
+      return char?.display_name || name;
     },
 
     async loadCharacters() {
@@ -157,42 +154,62 @@ function app() {
 
     async createCharacter() {
       if (!this.newCharacterName) {
-        alert('请输入角色名称');
+        alert('请输入英文ID');
         return;
       }
 
-      const res = await fetch('/api/characters', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: this.newCharacterName })
-      });
+      try {
+        const res = await fetch('/api/characters', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            name: this.newCharacterName,
+            display_name: this.newCharacterDisplayName || undefined,
+            copy_from: this.newCharacterCopyFrom || undefined
+          })
+        });
 
-      if (res.ok) {
-        this.showNewCharacterModal = false;
-        this.newCharacterName = '';
-        await this.loadCharacters();
-        alert('创建成功');
-      } else {
-        const error = await res.json();
-        alert('创建失败：' + error.error);
+        if (res.ok) {
+          const data = await res.json();
+          this.showNewCharacterModal = false;
+          this.newCharacterName = '';
+          this.newCharacterDisplayName = '';
+          this.newCharacterCopyFrom = '';
+          await this.loadCharacters();
+          
+          // 显示详细的成功信息
+          const displayName = this.newCharacterDisplayName || data.name;
+          const copyNote = data.copy_from ? `\n\n已从 ${this.getCharacterDisplayName(data.copy_from)} 复制人设，请检查并修改。` : '';
+          alert(`✅ ${data.message || '创建成功！'}\n\n角色 "${displayName}" (${data.name}) 已创建并添加到列表中。${copyNote}\n\n下一步：\n1. 点击"编辑"按钮检查并修改人设\n2. 在"配置管理"中添加 bot token\n3. 重启应用`);
+        } else {
+          const error = await res.json();
+          alert('❌ 创建失败：' + error.error);
+        }
+      } catch (error) {
+        alert('❌ 创建失败：' + error.message);
       }
     },
 
     async deleteCharacter(name) {
-      if (!confirm(`确定删除角色 ${name} 吗？此操作不可恢复！`)) {
+      if (!confirm(`确定删除角色 ${this.getCharacterDisplayName(name)} 吗？\n\n此操作将：\n- 删除角色的所有文件和数据\n- 从配置文件中移除角色\n\n此操作不可恢复！`)) {
         return;
       }
 
-      const res = await fetch(`/api/characters/${name}`, {
-        method: 'DELETE'
-      });
+      try {
+        const res = await fetch(`/api/characters/${name}`, {
+          method: 'DELETE'
+        });
 
-      if (res.ok) {
-        await this.loadCharacters();
-        alert('删除成功');
-      } else {
-        const error = await res.json();
-        alert('删除失败：' + error.error);
+        if (res.ok) {
+          const data = await res.json();
+          await this.loadCharacters();
+          alert(data.message || '删除成功');
+        } else {
+          const error = await res.json();
+          alert('删除失败：' + error.error);
+        }
+      } catch (error) {
+        alert('删除失败：' + error.message);
       }
     },
 
