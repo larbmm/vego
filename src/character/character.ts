@@ -67,11 +67,15 @@ export class Character {
       // Use user_id instead of platform to identify users
       const user = this.memoryManager.getOrCreateUser(message.user_id);
 
-      // Update platform user ID (extract from user_id for private chats)
+      // Update platform user ID (extract from user_id for both private and group chats)
       const isGroup = message.user_id.includes('@');
       if (!isGroup) {
         // For private chats, user_id is the platform user ID
         this.memoryManager.updateUserPlatformId(user.id, message.platform, message.user_id);
+      } else {
+        // For group chats, extract the user ID from "userId@chatId" format
+        const actualUserId = message.user_id.split('@')[0];
+        this.memoryManager.updateUserPlatformId(user.id, message.platform, actualUserId);
       }
 
       // Check if it's a group chat (user_id contains @)

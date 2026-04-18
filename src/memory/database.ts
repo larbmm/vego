@@ -143,11 +143,8 @@ export class DatabaseManager {
       return;
     }
 
-    // Skip if it's a group chat (contains @)
-    if (platformUserId.includes('@')) {
-      return;
-    }
-
+    // platformUserId should already be extracted (no @ symbol)
+    // Just update the database
     this.db.prepare(`
       UPDATE users SET ${column} = ? WHERE id = ?
     `).run(platformUserId, userId);
