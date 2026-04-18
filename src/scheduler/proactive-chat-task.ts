@@ -160,6 +160,18 @@ export class ProactiveChatTask {
       await this.bot.telegram.sendMessage(telegramId, message);
       console.info(`[ProactiveChatTask:${charName}] Sent proactive message: ${message}`);
 
+      // Save the proactive message to database
+      if (this.character.memoryManager) {
+        this.character.memoryManager.storeMessage(
+          userId,
+          'assistant',
+          message,
+          'telegram',
+          ''
+        );
+        console.info(`[ProactiveChatTask:${charName}] Saved proactive message to database`);
+      }
+
       return {
         [stateKey]: {
           last_message_time: new Date().toISOString(),
