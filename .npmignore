@@ -1,0 +1,42 @@
+# Source files
+src/
+*.ts
+!*.d.ts
+
+# Tests
+**/__tests__/
+**/*.test.ts
+**/*.spec.ts
+vitest.config.ts
+
+# Development files
+.env
+.env.*
+!.env.example
+
+# Documentation (keep only essential)
+SUMMARY.md
+
+# Build artifacts
+tsconfig.json
+tsconfig.*.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Misc
+coverage/
+.nyc_output/

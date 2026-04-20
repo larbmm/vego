@@ -84,6 +84,7 @@ export interface Config {
     base: string;
     model: string;
   };
+  timezone: string;  // 时区设置，如 'Asia/Shanghai'
   character: Record<string, CharacterConfig>;
   memory: MemoryConfig;
   scheduler: SchedulerConfig;
@@ -106,6 +107,7 @@ function loadConfig(): Config {
       base: rawConfig.api?.base || '',
       model: rawConfig.api?.model || '',
     },
+    timezone: rawConfig.timezone || 'Asia/Shanghai',  // 默认东八区
     character: {},
     memory: {
       max_history_messages: rawConfig.memory?.max_history_messages || 100,
@@ -173,4 +175,36 @@ export function getDatabasePath(charConfig: CharacterConfig): string {
 
 export function getConfigPath(): string {
   return CONFIG_PATH;
+}
+
+/**
+ * 获取当前本地时间的 ISO 字符串（精确到秒）
+ * 使用配置的时区，格式：YYYY-MM-DDTHH:mm:ss
+ */
+export function getLocalTimeString(): string {
+  const now = new Date();
+  const timezone = config.timezone || 'Asia/Shanghai';
+  
+  // 使用 Intl.DateTimeFormat 获取本地时间
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  });
+  
+  const parts = formatter.formatToParts(now);
+  const values: Record<string, string> = {};
+  parts.forEach(part => {
+    if (part.type !== 'literal') {
+      values[part.type] = part.value;
+    }
+  });
+  
+  // 格式：YYYY-MM-DDTHH:mm:ss
+  return `${values.year}-${values.month}-${values.day}T${values.hour}:${values.minute}:${values.second}`;
 }

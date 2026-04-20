@@ -1,11 +1,9 @@
 import { Character } from '../character/character.js';
-import OpenAI from 'openai';
 import { Telegraf } from 'telegraf';
 import { ProactiveChatConfig } from '../config/config.js';
 
 export class ProactiveChatTask {
   private character: Character;
-  private client?: OpenAI;
   private bot: Telegraf;
   private config: ProactiveChatConfig;
 
@@ -17,13 +15,6 @@ export class ProactiveChatTask {
     this.character = character;
     this.bot = telegramBot;
     this.config = config;
-  }
-
-  async initialize(): Promise<void> {
-    this.client = new OpenAI({
-      apiKey: this.character.apiKey,
-      baseURL: this.character.apiBase,
-    });
   }
 
   /**
@@ -71,40 +62,28 @@ export class ProactiveChatTask {
   }
 
   /**
-   * Generate a proactive message based on character persona
+   * Generate a proactive message using Character's GPTClient
+   * This ensures the message uses the same persona and context as normal conversations
    */
-  private async generateProactiveMessage(): Promise<string> {
-    if (!this.client) {
-      await this.initialize();
+  private async generateProactiveMessage(userId: number): Promise<string> {
+    if (!this.character.gptClient) {
+      throw new Error('GPTClient not initialized');
     }
 
-    const prompt = `你是一个虚拟角色，现在想主动跟主人打个招呼或分享一下生活。
-
-要求：
-1. 根据你的人设和关系，选择合适的称呼和语气
-2. 内容可以是：简单问候、分享生活小事、想念对方、询问对方在做什么等
-3. 保持简短自然，1-2句话即可
-4. 不要太频繁或打扰，语气要轻松随意
-
-示例：
-- 女友风格："老公在吗？想你了~"
-- 丫鬟风格："主人，奴婢想您了"
-- 朋友风格："在干嘛呢？"
-- 生活分享："刚才看到一只好可爱的猫咪！"
-
-请直接输出一句话，不要有其他内容：`;
+    // Use a simple prompt that triggers the character to initiate conversation
+    // The GPTClient will automatically load the persona and apply it
+    const prompt = `现在想主动跟对方打个招呼或分享一下生活。请发送一条简短自然的消息（1-2句话），可以是问候、分享、想念等。直接输出消息内容，不要有其他说明。`;
 
     try {
-      const response = await this.client!.chat.completions.create({
-        model: this.character.apiModel,
-        messages: [
-          { role: 'system', content: prompt },
-        ],
-        temperature: 0.9,
-        max_tokens: 100,
-      });
+      // Use the character's GPTClient which already has persona loaded
+      const response = await this.character.gptClient.chat(
+        userId,
+        prompt,
+        [], // No conversation history for proactive messages
+        false // Not a group chat
+      );
 
-      return response.choices[0].message.content?.trim() || '在吗？';
+      return response || '在吗？';
     } catch (error) {
       console.error('[ProactiveChatTask] Error generating message:', error);
       return '在吗？';
@@ -155,7 +134,7 @@ export class ProactiveChatTask {
     }
 
     try {
-      const message = await this.generateProactiveMessage();
+      const message = await this.generateProactiveMessage(userId);
       
       await this.bot.telegram.sendMessage(telegramId, message);
       console.info(`[ProactiveChatTask:${charName}] Sent proactive message: ${message}`);

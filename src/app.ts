@@ -1,4 +1,4 @@
-import { config, getWorkspacePath, getDatabasePath } from './config/config.js';
+import { config, getWorkspacePath, getDatabasePath, getVegoHome } from './config/config.js';
 import { Character } from './character/character.js';
 import { TelegramBot } from './bots/telegram-bot.js';
 import { DiscordBot } from './bots/discord-bot.js';
@@ -88,8 +88,9 @@ export class PersonaBotApp {
   private setupScheduler(): void {
     this.scheduler = new Scheduler(config.scheduler.schedule_time);
 
-    const stateDir = getWorkspacePath(config.character[Object.keys(config.character)[0]]);
-    this.scheduler.setStateFile(path.join(stateDir, 'scheduler_state.json'));
+    // Store scheduler state in .vego root directory, not in a character workspace
+    const vegoHome = getVegoHome();
+    this.scheduler.setStateFile(path.join(vegoHome, 'scheduler_state.json'));
 
     for (const [charName, char] of this.characters) {
       const dreamTask = new DreamTask(char, config.scheduler.min_conversations);

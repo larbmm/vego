@@ -1,4 +1,4 @@
-import { Client, GatewayIntentBits, Message as DiscordMessage } from 'discord.js';
+import { Client, GatewayIntentBits, Partials, Message as DiscordMessage } from 'discord.js';
 import { UnifiedMessage, MessageHandler } from '../router/message.js';
 import { GroupParticipation, GroupMessage } from './group-participation.js';
 import { sharedGroupCache } from './shared-group-cache.js';
@@ -18,7 +18,14 @@ export class DiscordBot {
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.DirectMessages,
+        GatewayIntentBits.DirectMessageTyping,
+        GatewayIntentBits.DirectMessageReactions,
         GatewayIntentBits.MessageContent,
+      ],
+      partials: [
+        Partials.Channel, // Required for DM support
+        Partials.Message,
+        Partials.User,
       ],
     });
   }
@@ -62,13 +69,30 @@ export class DiscordBot {
     }
 
     this.client.on('messageCreate', async (msg: DiscordMessage) => {
-      if (msg.author.bot) return;
+      // Log EVERY message received, even from bots
+      console.log(`[DiscordBot:${this.characterName}] messageCreate event fired!`);
+      console.log(`  - author: ${msg.author.username} (bot: ${msg.author.bot})`);
+      console.log(`  - channel type: ${msg.channel.type}`);
+      console.log(`  - guild: ${msg.guild ? msg.guild.name : 'DM'}`);
+      
+      if (msg.author.bot) {
+        console.log(`[DiscordBot:${this.characterName}] Ignoring bot message`);
+        return;
+      }
 
       try {
         const isGuild = msg.guild !== null;
         const userId = msg.author.id;
         const channelId = msg.channel.id;
         const senderName = msg.author.username;
+
+        // Debug logging
+        console.log(`[DiscordBot:${this.characterName}] Received message:`);
+        console.log(`  - isGuild: ${isGuild}`);
+        console.log(`  - userId: ${userId}`);
+        console.log(`  - channelId: ${channelId}`);
+        console.log(`  - content: ${msg.content.substring(0, 50)}...`);
+        console.log(`  - channel type: ${msg.channel.type}`);
 
         // Check if message mentions this bot
         const chineseNameMap: Record<string, string> = {
@@ -144,9 +168,12 @@ export class DiscordBot {
         } else if (isGuild) {
           // No group participation logic, skip guild messages unless mentioned/replied
           if (!mentionsMe && !isReplyToMe) {
+            console.log(`[DiscordBot:${this.characterName}] Skipping guild message (not mentioned/replied)`);
             return;
           }
         }
+
+        console.log(`[DiscordBot:${this.characterName}] Processing message...`);
 
         const message: UnifiedMessage = {
           platform: 'discord',
@@ -157,8 +184,12 @@ export class DiscordBot {
           senderName: isGuild ? senderName : undefined,
         };
 
+        console.log(`[DiscordBot:${this.characterName}] Calling handler with user_id: ${message.user_id}`);
         const response = await this.handler(message);
+        console.log(`[DiscordBot:${this.characterName}] Got response: ${response.substring(0, 50)}...`);
+        
         await msg.reply(response);
+        console.log(`[DiscordBot:${this.characterName}] Sent reply`);
 
         // Store bot's response in shared cache
         if (isGuild) {

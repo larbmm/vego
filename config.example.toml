@@ -1,6 +1,11 @@
 # Vego Configuration Example
 # Copy this file to ~/.vego/config.toml and fill in your values
 
+# Timezone Configuration
+# 时区设置，用于数据库时间戳和日志
+# 常用值：'Asia/Shanghai', 'Asia/Beijing', 'UTC', 'America/New_York'
+timezone = "Asia/Shanghai"
+
 [api]
 key = "your-api-key"
 model = "Pro/moonshotai/Kimi-K2.5"

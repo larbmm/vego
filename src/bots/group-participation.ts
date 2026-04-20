@@ -66,6 +66,14 @@ export class GroupParticipation {
     // This suggests the message might be for all characters in the group
     const addressingMultiple = /你们(俩|两个|几个|都)|你俩|两位/.test(message.content);
     if (addressingMultiple) {
+      // Check if it's a command or request (写、做、来、去、说、唱、跳 etc.)
+      const isCommandOrRequest = /(写|做|来|去|说|唱|跳|读|背|念|讲|画|弹|奏|表演|展示|准备|安排|处理|完成)/.test(message.content);
+      
+      if (isCommandOrRequest) {
+        // If it's a command/request to "你们俩", both should respond
+        return 'must';
+      }
+      
       // Check if there are other characters mentioned in recent messages
       // or if this character recently spoke (indicating active participation)
       const recentSpeakers = recentMessages.slice(-5).map(m => m.sender);

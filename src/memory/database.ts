@@ -169,8 +169,9 @@ export class DatabaseManager {
       }
     }
 
-    // Use local time instead of UTC
-    const now = new Date().toISOString();
+    // Use local time from config
+    const { getLocalTimeString } = require('../config/config.js');
+    const now = getLocalTimeString();
 
     this.db.prepare(`
       INSERT INTO messages (user_id, role, content, platform, message_id, created_at, sender_name)
