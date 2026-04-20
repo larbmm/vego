@@ -62,6 +62,34 @@ export class ProactiveChatTask {
   }
 
   /**
+   * Get recent conversation history for context
+   */
+  private getRecentHistory(userId: number, limit: number = 10): Array<{ role: string; content: string }> {
+    if (!this.character.memoryManager) {
+      return [];
+    }
+
+    try {
+      const db = (this.character.memoryManager as any).db;
+      const messages = db.db
+        .prepare(`
+          SELECT role, content 
+          FROM messages 
+          WHERE user_id = ? 
+          ORDER BY timestamp DESC 
+          LIMIT ?
+        `)
+        .all(userId, limit) as Array<{ role: string; content: string }>;
+      
+      // Reverse to get chronological order
+      return messages.reverse();
+    } catch (error) {
+      console.error('[ProactiveChatTask] Error getting history:', error);
+      return [];
+    }
+  }
+
+  /**
    * Generate a proactive message using Character's GPTClient
    * This ensures the message uses the same persona and context as normal conversations
    */
@@ -70,16 +98,49 @@ export class ProactiveChatTask {
       throw new Error('GPTClient not initialized');
     }
 
-    // Use a simple prompt that triggers the character to initiate conversation
-    // The GPTClient will automatically load the persona and apply it
-    const prompt = `现在想主动跟对方打个招呼或分享一下生活。请发送一条简短自然的消息（1-2句话），可以是问候、分享、想念等。直接输出消息内容，不要有其他说明。`;
+    // Get current time information
+    const now = new Date();
+    const hours = now.getHours();
+    const minutes = now.getMinutes();
+    const dayOfWeek = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][now.getDay()];
+    const timeStr = `${hours}:${minutes.toString().padStart(2, '0')}`;
+    
+    // Determine time period
+    let timePeriod = '';
+    if (hours >= 6 && hours < 12) {
+      timePeriod = '早上';
+    } else if (hours >= 12 && hours < 14) {
+      timePeriod = '中午';
+    } else if (hours >= 14 && hours < 18) {
+      timePeriod = '下午';
+    } else if (hours >= 18 && hours < 22) {
+      timePeriod = '晚上';
+    } else {
+      timePeriod = '深夜';
+    }
+
+    // Get recent conversation history for context
+    const recentHistory = this.getRecentHistory(userId, 10);
+
+    // Use a detailed prompt that includes time context
+    const prompt = `现在是${dayOfWeek}${timePeriod}${timeStr}。你想主动跟对方打个招呼或分享一下生活。
+
+要求：
+1. 必须符合你的身份设定和当前时间场景（注意：深夜不会有阳光，早上不会说晚安等）
+2. 内容要自然真实，符合你的说话风格和性格
+3. 根据时间选择合适的话题和活动（要符合这个时段你可能在做的事）
+4. 可以结合之前的对话内容，如果之前提到了计划或约定，可以自然地延续话题
+5. 1-2句话即可，简短自然
+6. 直接输出消息内容，不要有其他说明
+
+请发送一条符合当前时间和你身份的消息：`;
 
     try {
-      // Use the character's GPTClient which already has persona loaded
+      // Use the character's GPTClient with recent conversation history
       const response = await this.character.gptClient.chat(
         userId,
         prompt,
-        [], // No conversation history for proactive messages
+        recentHistory, // Include recent conversation history
         false // Not a group chat
       );
 
