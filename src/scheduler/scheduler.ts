@@ -57,8 +57,8 @@ export class Scheduler {
     const cronExpression = `${minute} ${hour} * * *`;
     const job = cron.schedule(cronExpression, async () => {
       try {
-        // Add random delay (0-30 minutes) to avoid exact hour triggering
-        const randomDelay = Math.floor(Math.random() * 30 * 60 * 1000);
+        // Add random delay (0-60 minutes) to spread messages throughout the hour
+        const randomDelay = Math.floor(Math.random() * 60 * 60 * 1000);
         await new Promise(resolve => setTimeout(resolve, randomDelay));
         
         const result = await task(this.state);

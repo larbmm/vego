@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3';
 import * as path from 'path';
 import * as fs from 'fs';
+import { getLocalTimeString } from '../config/config.js';
 
 export interface Message {
   id: number;
@@ -170,7 +171,6 @@ export class DatabaseManager {
     }
 
     // Use local time from config
-    const { getLocalTimeString } = require('../config/config.js');
     const now = getLocalTimeString();
 
     this.db.prepare(`

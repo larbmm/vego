@@ -64,7 +64,7 @@ export class ProactiveChatTask {
   /**
    * Get recent conversation history for context
    */
-  private getRecentHistory(userId: number, limit: number = 10): Array<{ role: string; content: string }> {
+  private getRecentHistory(userId: number, limit: number = 10): Array<{ role: string; content: string; created_at: string }> {
     if (!this.character.memoryManager) {
       return [];
     }
@@ -73,13 +73,13 @@ export class ProactiveChatTask {
       const db = (this.character.memoryManager as any).db;
       const messages = db.db
         .prepare(`
-          SELECT role, content 
+          SELECT role, content, created_at 
           FROM messages 
           WHERE user_id = ? 
-          ORDER BY timestamp DESC 
+          ORDER BY created_at DESC 
           LIMIT ?
         `)
-        .all(userId, limit) as Array<{ role: string; content: string }>;
+        .all(userId, limit) as Array<{ role: string; content: string; created_at: string }>;
       
       // Reverse to get chronological order
       return messages.reverse();
@@ -105,33 +105,59 @@ export class ProactiveChatTask {
     const dayOfWeek = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][now.getDay()];
     const timeStr = `${hours}:${minutes.toString().padStart(2, '0')}`;
     
-    // Determine time period
+    // Determine time period and scene description
     let timePeriod = '';
+    let sceneHint = '';
     if (hours >= 6 && hours < 12) {
       timePeriod = '早上';
+      sceneHint = '（早晨时光，可以提到阳光、早餐、起床、上课等）';
     } else if (hours >= 12 && hours < 14) {
       timePeriod = '中午';
+      sceneHint = '（午间时分，可以提到午饭、午休等）';
     } else if (hours >= 14 && hours < 18) {
       timePeriod = '下午';
+      sceneHint = '（下午时段，可以提到下午茶、课程、活动等）';
     } else if (hours >= 18 && hours < 22) {
       timePeriod = '晚上';
+      sceneHint = '（夜幕降临，天已经黑了，可以提到晚饭、夜色、月亮、星星、灯光等，不要提阳光）';
     } else {
       timePeriod = '深夜';
+      sceneHint = '（深夜时分，夜深人静，可以提到睡意、安静、月色等，不要提阳光）';
     }
 
     // Get recent conversation history for context
     const recentHistory = this.getRecentHistory(userId, 10);
 
+    // Check if last message was from assistant (user hasn't replied)
+    const lastMessage = recentHistory.length > 0 ? recentHistory[recentHistory.length - 1] : null;
+    const userHasntReplied = lastMessage && lastMessage.role === 'assistant';
+    
+    // Get last assistant message to avoid repetition
+    const lastAssistantMsg = recentHistory
+      .filter(msg => msg.role === 'assistant')
+      .slice(-1)[0];
+    
+    let avoidRepetition = '';
+    if (lastAssistantMsg) {
+      if (userHasntReplied) {
+        // User hasn't replied, must change topic
+        avoidRepetition = `\n\n【重要】对方还没有回复你上一条消息"${lastAssistantMsg.content}"，所以这次必须换个完全不同的话题或方式，不要重复类似的内容。可以分享新的生活片段、提起另一个话题、或表达此刻的心情。`;
+      } else {
+        // User has replied, just avoid exact repetition
+        avoidRepetition = `\n\n注意：避免和之前的消息内容重复。`;
+      }
+    }
+
     // Use a detailed prompt that includes time context
-    const prompt = `现在是${dayOfWeek}${timePeriod}${timeStr}。你想主动跟对方打个招呼或分享一下生活。
+    const prompt = `现在是${dayOfWeek}${timePeriod}${timeStr}${sceneHint}。你想主动跟对方打个招呼或分享一下生活。
 
 要求：
-1. 必须符合你的身份设定和当前时间场景（注意：深夜不会有阳光，早上不会说晚安等）
+1. 必须符合你的身份设定和当前时间场景（注意：晚上和深夜天已经黑了，不会有阳光；早上不会说晚安等）
 2. 内容要自然真实，符合你的说话风格和性格
-3. 根据时间选择合适的话题和活动（要符合这个时段你可能在做的事）
+3. 根据时间选择合适的话题和活动（要符合这个时段你可能在做的事和能看到的景象）
 4. 可以结合之前的对话内容，如果之前提到了计划或约定，可以自然地延续话题
 5. 1-2句话即可，简短自然
-6. 直接输出消息内容，不要有其他说明
+6. 直接输出消息内容，不要有其他说明${avoidRepetition}
 
 请发送一条符合当前时间和你身份的消息：`;
 

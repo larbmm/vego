@@ -133,26 +133,29 @@ export class PersonaBotApp {
       }
 
       // Import and create proactive chat task
-      import('./scheduler/proactive-chat-task.js').then(({ ProactiveChatTask }) => {
-        const proactiveTask = new ProactiveChatTask(
-          char,
-          tgBot.getBot(),
-          config.proactive_chat
-        );
-
-        // Add hourly task with random probability
-        for (let hour = Math.floor(config.proactive_chat.active_hours_start); 
-             hour <= Math.floor(config.proactive_chat.active_hours_end); 
-             hour++) {
-          this.scheduler!.addHourlyTask(
-            proactiveTask.call.bind(proactiveTask),
-            hour,
-            0 // Run at the start of each hour
+      // Use IIFE to capture current values of char, tgBot, and charName
+      ((currentChar, currentBot, currentName) => {
+        import('./scheduler/proactive-chat-task.js').then(({ ProactiveChatTask }) => {
+          const proactiveTask = new ProactiveChatTask(
+            currentChar,
+            currentBot.getBot(),
+            config.proactive_chat
           );
-        }
 
-        console.log(`✓ Proactive chat task added for '${charName}' (${Math.floor(config.proactive_chat.active_hours_end) - Math.floor(config.proactive_chat.active_hours_start) + 1} hourly checks)`);
-      });
+          // Add hourly task for proactive chat
+          for (let hour = Math.floor(config.proactive_chat.active_hours_start); 
+               hour <= Math.floor(config.proactive_chat.active_hours_end); 
+               hour++) {
+            this.scheduler!.addHourlyTask(
+              proactiveTask.call.bind(proactiveTask),
+              hour,
+              0 // Run at the start of each hour
+            );
+          }
+
+          console.log(`✓ Proactive chat task added for '${currentName}' (${Math.floor(config.proactive_chat.active_hours_end) - Math.floor(config.proactive_chat.active_hours_start) + 1} hourly checks)`);
+        });
+      })(char, tgBot, charName);
     }
   }
 
