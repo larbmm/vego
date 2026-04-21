@@ -1,6 +1,6 @@
 {
   "name": "vego-nodejs",
-  "version": "1.0.1",
+  "version": "0.7.0",
   "description": "Multi-character chatbot with layered memory system and intelligent group chat support",
   "main": "build/index.js",
   "type": "module",
