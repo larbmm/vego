@@ -51,17 +51,65 @@ function app() {
     async loadMessages() {
       if (!this.selectedCharacter) return;
       
+      // 重置offset，从最新的消息开始加载
+      this.messageOffset = 0;
+      
+      // 计算从哪里开始加载最新的消息
       const res = await fetch(`/api/messages/${this.selectedCharacter}?limit=${this.messageLimit}&offset=${this.messageOffset}`);
       const data = await res.json();
       
-      this.messages = data.messages;
+      // 计算最新消息的offset
+      const latestOffset = Math.max(0, data.total - this.messageLimit);
+      
+      // 重新加载最新的消息
+      const latestRes = await fetch(`/api/messages/${this.selectedCharacter}?limit=${this.messageLimit}&offset=${latestOffset}`);
+      const latestData = await latestRes.json();
+      
+      // 数据库返回的是升序（旧到新），直接使用
+      this.messages = latestData.messages;
       this.totalMessages = data.total;
+      this.messageOffset = latestOffset;
       this.selectedMessages = [];
+      
+      // 滚动到底部
+      this.$nextTick(() => {
+        const container = document.getElementById('chatContainer');
+        if (container) {
+          container.scrollTop = container.scrollHeight;
+        }
+      });
     },
 
     async loadMoreMessages() {
-      this.messageOffset += this.messageLimit;
-      await this.loadMessages();
+      if (!this.selectedCharacter) return;
+      
+      // 如果已经加载到最开始了，不再加载
+      if (this.messageOffset === 0) {
+        return;
+      }
+      
+      // 保存当前滚动位置
+      const container = document.getElementById('chatContainer');
+      const oldScrollHeight = container ? container.scrollHeight : 0;
+      
+      // 计算新的offset，向前加载
+      const newOffset = Math.max(0, this.messageOffset - this.messageLimit);
+      const loadCount = this.messageOffset - newOffset;
+      
+      const res = await fetch(`/api/messages/${this.selectedCharacter}?limit=${loadCount}&offset=${newOffset}`);
+      const data = await res.json();
+      
+      // 将旧消息追加到前面
+      this.messages = [...data.messages, ...this.messages];
+      this.messageOffset = newOffset;
+      
+      // 恢复滚动位置，保持在原来的消息位置
+      this.$nextTick(() => {
+        if (container) {
+          const newScrollHeight = container.scrollHeight;
+          container.scrollTop = newScrollHeight - oldScrollHeight;
+        }
+      });
     },
 
     toggleMessageSelection(id) {
@@ -230,15 +278,9 @@ function app() {
         if (res.ok) {
           const data = await res.json();
           this.newMessage = '';
-          await this.loadMessages();
           
-          // 滚动到底部
-          setTimeout(() => {
-            const container = document.getElementById('chatContainer');
-            if (container) {
-              container.scrollTop = container.scrollHeight;
-            }
-          }, 100);
+          // 重新加载消息以获取最新的对话
+          await this.loadMessages();
         } else {
           const error = await res.json();
           alert('发送失败：' + error.error);

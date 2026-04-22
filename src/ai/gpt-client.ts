@@ -1,6 +1,7 @@
 import OpenAI from 'openai';
 import { MemoryManager } from '../memory/memory-manager.js';
 import { WorkspaceLoader } from './workspace-loader.js';
+import { config } from '../config/config.js';
 
 const DEFAULT_TIMEOUT = 60000; // 60 seconds in milliseconds
 
@@ -40,17 +41,20 @@ export class GPTClient {
   private async buildSystemPrompt(userId: number, isGroupChat: boolean = false): Promise<string> {
     const personaContent = this.loadPersona();
     
-    // 添加当前时间信息
+    // 添加当前时间信息，使用配置文件中的时区
     const now = new Date();
-    const timeInfo = `\n\n---\n当前时间：${now.toLocaleString('zh-CN', { 
-      timeZone: 'Asia/Shanghai',
+    const timezone = config.timezone || 'Asia/Shanghai';
+    const currentTime = now.toLocaleString('zh-CN', { 
+      timeZone: timezone,
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
       hour: '2-digit',
       minute: '2-digit',
       weekday: 'long'
-    })}\n\n【重要规则】\n1. 对话历史中的时间戳格式 (时间: YYYY/MM/DD HH:mm) 是系统自动添加的元数据，仅供你了解对话发生的时间。\n2. 你的回复中绝对不要包含任何时间戳、时间标注、括号格式或类似的元数据格式。\n3. 不要模仿或重复这种 (时间: ...) 的格式。\n4. 直接用自然语言对话，就像平时聊天一样。\n`;
+    });
+    
+    const timeInfo = `\n\n---\n当前时间：${currentTime}\n\n【重要规则】\n1. 对话历史中的时间戳格式 (时间: YYYY/MM/DD HH:mm) 是系统自动添加的元数据，仅供你了解对话发生的时间。\n2. 你的回复中绝对不要包含任何时间戳、时间标注、括号格式或类似的元数据格式。\n3. 不要模仿或重复这种 (时间: ...) 的格式。\n4. 直接用自然语言对话，就像平时聊天一样。\n`;
 
     // 添加场景信息
     const sceneInfo = isGroupChat 

@@ -201,55 +201,16 @@ export class DatabaseManager {
   }
 
   shouldCompress(userId: number): boolean {
-    const user = this.db
-      .prepare('SELECT * FROM users WHERE id = ?')
-      .get(userId) as User | undefined;
-
-    if (!user) {
-      return false;
-    }
-
-    const currentCount = this.getMessageCount(userId);
-    const messagesSinceCompression =
-      currentCount - user.message_count_at_last_compression;
-    const compressInterval = 300 - 100;
-
-    return messagesSinceCompression >= compressInterval;
+    // 禁用自动压缩，保留所有历史消息
+    // 用户的完整对话历史是宝贵的数据，不应该被删除
+    // 做梦机制会定期提取重要内容到 md 文件
+    return false;
   }
 
   compressConversation(userId: number): number {
-    const totalCount = this.getMessageCount(userId);
-    const keepCount = 100;
-
-    if (totalCount <= keepCount) {
-      return 0;
-    }
-
-    const deleteCount = totalCount - keepCount;
-
-    const toDelete = this.db
-      .prepare(`
-        SELECT id FROM messages
-        WHERE user_id = ?
-        ORDER BY created_at ASC
-        LIMIT ?
-      `)
-      .all(userId, deleteCount) as { id: number }[];
-
-    const ids = toDelete.map((m) => m.id);
-
-    if (ids.length > 0) {
-      const placeholders = ids.map(() => '?').join(',');
-      this.db.prepare(`DELETE FROM messages WHERE id IN (${placeholders})`).run(...ids);
-    }
-
-    this.db.prepare(`
-      UPDATE users
-      SET message_count_at_last_compression = ?
-      WHERE id = ?
-    `).run(totalCount - deleteCount, userId);
-
-    return deleteCount;
+    // 已禁用自动压缩
+    // 如果将来需要手动压缩，可以通过 Web 界面或命令行工具触发
+    return 0;
   }
 
   getUnprocessedMessages(userId: number, lastId: number, targetDate: Date): Message[] {

@@ -132,19 +132,37 @@ export class ProactiveChatTask {
     const lastMessage = recentHistory.length > 0 ? recentHistory[recentHistory.length - 1] : null;
     const userHasntReplied = lastMessage && lastMessage.role === 'assistant';
     
+    // Check time since last message to determine greeting style
+    let timeSinceLastMessage = Infinity;
+    let greetingStyle = 'fresh'; // 'fresh' or 'casual'
+    
+    if (lastMessage && lastMessage.created_at) {
+      const lastMsgTime = new Date(lastMessage.created_at);
+      timeSinceLastMessage = (Date.now() - lastMsgTime.getTime()) / (1000 * 60 * 60); // hours
+      
+      // If last message was within 3 hours, use casual greeting
+      // If more than 3 hours, use fresh greeting
+      greetingStyle = timeSinceLastMessage <= 3 ? 'casual' : 'fresh';
+    }
+    
     // Get last assistant message to avoid repetition
     const lastAssistantMsg = recentHistory
       .filter(msg => msg.role === 'assistant')
       .slice(-1)[0];
     
-    let avoidRepetition = '';
-    if (lastAssistantMsg) {
+    let contextInstruction = '';
+    
+    if (greetingStyle === 'fresh') {
+      // Fresh greeting - it's been a while
+      contextInstruction = '\n\n【重要】距离上次对话已经有一段时间了（超过3小时），这是一次全新的主动打招呼。不要接着之前的话题继续聊，而是要像重新开始对话一样，自然地打个招呼、问候一下、或分享当下的生活。';
+    } else {
+      // Casual greeting - recent conversation
       if (userHasntReplied) {
-        // User hasn't replied, must change topic
-        avoidRepetition = `\n\n【重要】对方还没有回复你上一条消息"${lastAssistantMsg.content}"，所以这次必须换个完全不同的话题或方式，不要重复类似的内容。可以分享新的生活片段、提起另一个话题、或表达此刻的心情。`;
+        // User hasn't replied to last message
+        contextInstruction = `\n\n【注意】对方还没有回复你上一条消息"${lastAssistantMsg?.content}"，所以这次要换个话题或换个方式，不要重复类似的内容。可以分享新的生活片段、提起另一个话题。`;
       } else {
-        // User has replied, just avoid exact repetition
-        avoidRepetition = `\n\n注意：避免和之前的消息内容重复。`;
+        // User has replied, can continue naturally
+        contextInstruction = '\n\n可以自然地延续之前的对话，或者分享新的内容。注意：避免和之前的消息内容重复。';
       }
     }
 
@@ -155,9 +173,8 @@ export class ProactiveChatTask {
 1. 必须符合你的身份设定和当前时间场景（注意：晚上和深夜天已经黑了，不会有阳光；早上不会说晚安等）
 2. 内容要自然真实，符合你的说话风格和性格
 3. 根据时间选择合适的话题和活动（要符合这个时段你可能在做的事和能看到的景象）
-4. 可以结合之前的对话内容，如果之前提到了计划或约定，可以自然地延续话题
-5. 1-2句话即可，简短自然
-6. 直接输出消息内容，不要有其他说明${avoidRepetition}
+4. 1-2句话即可，简短自然
+5. 直接输出消息内容，不要有其他说明${contextInstruction}
 
 请发送一条符合当前时间和你身份的消息：`;
 

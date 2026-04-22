@@ -10,3 +10,4 @@ test-*.cjs
 test-*.js
 check-*.cjs
 migrate-*.cjs
+*.py

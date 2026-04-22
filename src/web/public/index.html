@@ -191,56 +191,87 @@
       <!-- 对话管理 -->
       <div x-show="currentView === 'chat'" x-cloak>
         <div class="bg-white rounded-lg shadow p-4 md:p-6">
-          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-            <h2 class="text-xl md:text-2xl font-bold">
-              对话管理
-              <span x-show="selectedCharacter" class="text-gray-500 text-base md:text-lg ml-2 block sm:inline">
-                - <span x-text="getCharacterDisplayName(selectedCharacter)"></span>
-              </span>
-            </h2>
-            <select 
-              x-model="selectedCharacter" 
-              @change="loadMessages()"
-              class="border rounded-lg px-4 py-2 w-full sm:w-auto text-sm">
-              <option value="">选择角色</option>
+          <h2 class="text-xl md:text-2xl font-bold mb-6">对话管理</h2>
+
+          <!-- 未选择角色时显示角色列表 -->
+          <div x-show="!selectedCharacter">
+            <p class="text-gray-600 mb-4">选择一个角色开始对话：</p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <template x-for="char in characters" :key="char.name">
-                <option :value="char.name" x-text="getCharacterDisplayName(char.name)"></option>
+                <button
+                  @click="selectedCharacter = char.name; loadMessages()"
+                  class="border-2 border-gray-200 rounded-lg p-4 hover:border-blue-500 hover:shadow-md transition text-left">
+                  <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white text-xl font-bold">
+                      <span x-text="getCharacterDisplayName(char.name).charAt(0)"></span>
+                    </div>
+                    <div class="flex-1">
+                      <h3 class="font-semibold text-lg" x-text="getCharacterDisplayName(char.name)"></h3>
+                      <p class="text-xs text-gray-500" x-text="char.name"></p>
+                    </div>
+                  </div>
+                </button>
               </template>
-            </select>
+            </div>
           </div>
 
+          <!-- 选择角色后显示对话界面 -->
           <div x-show="selectedCharacter" x-cloak>
+            <!-- 当前角色信息和返回按钮 -->
+            <div class="mb-4 flex items-center justify-between bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-4">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white font-bold">
+                  <span x-text="getCharacterDisplayName(selectedCharacter).charAt(0)"></span>
+                </div>
+                <div>
+                  <h3 class="font-semibold text-lg" x-text="getCharacterDisplayName(selectedCharacter)"></h3>
+                  <p class="text-xs text-gray-500">
+                    共 <span x-text="totalMessages"></span> 条消息
+                    <span x-show="selectedMessages.length > 0" class="ml-2 text-blue-600">
+                      · 已选中 <span x-text="selectedMessages.length"></span> 条
+                    </span>
+                  </p>
+                </div>
+              </div>
+              <button
+                @click="selectedCharacter = ''; messages = []; selectedMessages = []"
+                class="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition text-sm">
+                ← 返回
+              </button>
+            </div>
+
             <!-- 操作按钮 -->
-            <div class="mb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <div class="text-sm">
-                <span class="text-gray-600">共 <span x-text="totalMessages"></span> 条消息</span>
-                <span x-show="selectedMessages.length > 0" class="ml-4 text-blue-600">
-                  已选中 <span x-text="selectedMessages.length"></span> 条
-                </span>
-              </div>
-              <div class="flex flex-wrap gap-2 w-full sm:w-auto">
-                <button 
-                  x-show="selectedMessages.length > 0"
-                  @click="clearSelection()"
-                  class="flex-1 sm:flex-none bg-gray-400 text-white px-3 py-2 rounded-lg hover:bg-gray-500 transition text-sm">
-                  清除选择
-                </button>
-                <button 
-                  x-show="selectedMessages.length > 0"
-                  @click="deleteSelectedMessages()"
-                  class="flex-1 sm:flex-none bg-red-500 text-white px-3 py-2 rounded-lg hover:bg-red-600 transition text-sm">
-                  删除选中
-                </button>
-                <button 
-                  @click="clearAllMessages()"
-                  class="flex-1 sm:flex-none bg-gray-500 text-white px-3 py-2 rounded-lg hover:bg-gray-600 transition text-sm">
-                  删除所有
-                </button>
-              </div>
+            <div class="mb-4 flex flex-wrap gap-2">
+              <button 
+                x-show="selectedMessages.length > 0"
+                @click="clearSelection()"
+                class="bg-gray-400 text-white px-3 py-2 rounded-lg hover:bg-gray-500 transition text-sm">
+                清除选择
+              </button>
+              <button 
+                x-show="selectedMessages.length > 0"
+                @click="deleteSelectedMessages()"
+                class="bg-red-500 text-white px-3 py-2 rounded-lg hover:bg-red-600 transition text-sm">
+                删除选中
+              </button>
+              <button 
+                @click="clearAllMessages()"
+                class="bg-gray-500 text-white px-3 py-2 rounded-lg hover:bg-gray-600 transition text-sm">
+                删除所有
+              </button>
             </div>
 
             <!-- 聊天气泡界面 -->
             <div class="border rounded-lg p-4 h-[400px] md:h-[500px] overflow-y-auto bg-gray-50" id="chatContainer">
+              <!-- 加载更多按钮 - 放在顶部 -->
+              <div x-show="messageOffset > 0" class="mb-4 flex justify-center">
+                <button 
+                  @click="loadMoreMessages()"
+                  class="px-4 py-2 bg-gray-100 border rounded-lg hover:bg-gray-200 transition text-sm text-gray-700">
+                  ⬆️ 加载更早的消息
+                </button>
+              </div>
+              
               <template x-for="msg in messages" :key="msg.id">
                 <div class="mb-4 flex items-start">
                   
@@ -316,16 +347,6 @@
                 :disabled="isSending || !newMessage.trim()"
                 class="bg-blue-600 text-white px-4 md:px-6 py-2 rounded-lg hover:bg-blue-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed text-sm">
                 发送
-              </button>
-            </div>
-
-            <!-- 分页 -->
-            <div class="mt-4 flex justify-center space-x-2">
-              <button 
-                @click="loadMoreMessages()"
-                x-show="messages.length < totalMessages"
-                class="px-4 py-2 border rounded-lg hover:bg-gray-100 transition text-sm">
-                加载更多
               </button>
             </div>
           </div>
