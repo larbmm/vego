@@ -9,7 +9,9 @@
     "start": "tsx src/index.ts",
     "build": "tsc",
     "test": "vitest",
-    "chat": "tsx src/tools/chat-manager.ts"
+    "chat": "tsx src/tools/chat-manager.ts",
+    "manual-dream": "tsx scripts/manual-dream.ts",
+    "regenerate-diary": "tsx scripts/regenerate-diary.ts"
   },
   "engines": {
     "node": ">=18.0.0"

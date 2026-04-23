@@ -31,7 +31,7 @@ export class DreamTask {
 请按以下JSON格式输出（不要有其他内容）：
 \`\`\`json
 {
-  "diary": "日记内容，第一人称，200-300字，记录今天发生了什么、有什么感受",
+  "diary": "日记内容，第一人称，记录今天发生了什么、有什么感受",
   "summary": "一句话总结今天，格式：日期+关键事件+情感（例：04/06 聊了旅行计划，用户想去日本看樱花，聊得很开心）",
   "important_facts": [
     "用户提到的重要事实、偏好、承诺、约定等需要长期记住的信息",
@@ -155,7 +155,7 @@ export class DreamTask {
           },
         ],
         temperature: 0.7,
-        max_tokens: 800,
+        max_tokens: 4000,
       });
 
       const content = response.choices[0].message.content?.trim() || '';
