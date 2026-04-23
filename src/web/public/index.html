@@ -191,10 +191,9 @@
       <!-- 对话管理 -->
       <div x-show="currentView === 'chat'" x-cloak>
         <div class="bg-white rounded-lg shadow p-4 md:p-6">
-          <h2 class="text-xl md:text-2xl font-bold mb-6">对话管理</h2>
-
           <!-- 未选择角色时显示角色列表 -->
           <div x-show="!selectedCharacter">
+            <h2 class="text-xl md:text-2xl font-bold mb-4">对话管理</h2>
             <p class="text-gray-600 mb-4">选择一个角色开始对话：</p>
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <template x-for="char in characters" :key="char.name">
@@ -217,48 +216,49 @@
 
           <!-- 选择角色后显示对话界面 -->
           <div x-show="selectedCharacter" x-cloak>
-            <!-- 当前角色信息和返回按钮 -->
-            <div class="mb-4 flex items-center justify-between bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-4">
-              <div class="flex items-center gap-3">
-                <div class="w-10 h-10 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white font-bold">
+            <!-- 紧凑的顶部栏：角色名 + 消息数 + 操作按钮 -->
+            <div class="mb-3 flex items-center justify-between gap-2 flex-wrap">
+              <!-- 左侧：角色信息 -->
+              <div class="flex items-center gap-2">
+                <div class="w-8 h-8 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white text-sm font-bold">
                   <span x-text="getCharacterDisplayName(selectedCharacter).charAt(0)"></span>
                 </div>
                 <div>
-                  <h3 class="font-semibold text-lg" x-text="getCharacterDisplayName(selectedCharacter)"></h3>
+                  <h3 class="font-semibold text-base" x-text="getCharacterDisplayName(selectedCharacter)"></h3>
                   <p class="text-xs text-gray-500">
-                    共 <span x-text="totalMessages"></span> 条消息
-                    <span x-show="selectedMessages.length > 0" class="ml-2 text-blue-600">
-                      · 已选中 <span x-text="selectedMessages.length"></span> 条
+                    <span x-text="totalMessages"></span> 条消息
+                    <span x-show="selectedMessages.length > 0" class="text-blue-600">
+                      · 已选 <span x-text="selectedMessages.length"></span>
                     </span>
                   </p>
                 </div>
               </div>
-              <button
-                @click="selectedCharacter = ''; messages = []; selectedMessages = []"
-                class="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition text-sm">
-                ← 返回
-              </button>
-            </div>
-
-            <!-- 操作按钮 -->
-            <div class="mb-4 flex flex-wrap gap-2">
-              <button 
-                x-show="selectedMessages.length > 0"
-                @click="clearSelection()"
-                class="bg-gray-400 text-white px-3 py-2 rounded-lg hover:bg-gray-500 transition text-sm">
-                清除选择
-              </button>
-              <button 
-                x-show="selectedMessages.length > 0"
-                @click="deleteSelectedMessages()"
-                class="bg-red-500 text-white px-3 py-2 rounded-lg hover:bg-red-600 transition text-sm">
-                删除选中
-              </button>
-              <button 
-                @click="clearAllMessages()"
-                class="bg-gray-500 text-white px-3 py-2 rounded-lg hover:bg-gray-600 transition text-sm">
-                删除所有
-              </button>
+              
+              <!-- 右侧：操作按钮 -->
+              <div class="flex gap-2 flex-wrap">
+                <button 
+                  x-show="selectedMessages.length > 0"
+                  @click="clearSelection()"
+                  class="bg-gray-400 text-white px-2 py-1 rounded text-xs hover:bg-gray-500 transition">
+                  清除选择
+                </button>
+                <button 
+                  x-show="selectedMessages.length > 0"
+                  @click="deleteSelectedMessages()"
+                  class="bg-red-500 text-white px-2 py-1 rounded text-xs hover:bg-red-600 transition">
+                  删除选中
+                </button>
+                <button 
+                  @click="clearAllMessages()"
+                  class="bg-gray-500 text-white px-2 py-1 rounded text-xs hover:bg-gray-600 transition">
+                  删除所有
+                </button>
+                <button
+                  @click="selectedCharacter = ''; messages = []; selectedMessages = []"
+                  class="px-2 py-1 bg-white border border-gray-300 rounded text-xs hover:bg-gray-50 transition">
+                  ← 返回
+                </button>
+              </div>
             </div>
 
             <!-- 聊天气泡界面 -->
