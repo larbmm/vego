@@ -1,6 +1,15 @@
 import { PersonaBotApp } from './app.js';
 import './web/logger.js'; // Initialize logger to intercept console
 
+// Suppress punycode deprecation warning (from dependencies like whatwg-url)
+process.removeAllListeners('warning');
+process.on('warning', (warning) => {
+  if (warning.name === 'DeprecationWarning' && warning.message.includes('punycode')) {
+    return; // Ignore punycode deprecation warnings
+  }
+  console.warn(warning);
+});
+
 let appInstance: PersonaBotApp | null = null;
 
 export function getAppInstance(): PersonaBotApp | null {

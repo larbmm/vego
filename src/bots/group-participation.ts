@@ -33,7 +33,7 @@ export class GroupParticipation {
   /**
    * Quick check if should respond (rule-based, no API call)
    */
-  shouldRespondQuick(message: GroupMessage, recentMessages: GroupMessage[]): 'must' | 'maybe' | 'no' {
+  shouldRespondQuick(message: GroupMessage, recentMessages: GroupMessage[]): 'must' | 'high' | 'maybe' | 'no' {
     // Always respond if mentioned or replied to
     if (message.mentionsMe || message.isReplyToMe) {
       return 'must';
@@ -74,15 +74,9 @@ export class GroupParticipation {
         return 'must';
       }
       
-      // Check if there are other characters mentioned in recent messages
-      // or if this character recently spoke (indicating active participation)
-      const recentSpeakers = recentMessages.slice(-5).map(m => m.sender);
-      const thisCharacterRecentlyActive = recentSpeakers.includes(this.characterName);
-      
-      if (thisCharacterRecentlyActive) {
-        return 'must'; // Likely addressing this character too
-      }
-      return 'maybe'; // Might be addressing this character
+      // For "你们俩"/"你们" without command, still high chance to respond
+      // This is clearly addressing the group
+      return 'high'; // 70-80% chance
     }
 
     // Don't respond if just spoke
@@ -103,13 +97,13 @@ export class GroupParticipation {
                       /^(怎么|为什么|什么|哪里|谁|是不是|对吗|好吗)/.test(message.content);
     
     if (isQuestion) {
-      return 'maybe'; // 50% chance
+      return 'maybe'; // Use question probability
     }
 
     // Check if addressing the group
     const addressingGroup = /^(你们|大家|各位)/.test(message.content);
     if (addressingGroup) {
-      return 'maybe'; // 50% chance
+      return 'high'; // 70-80% chance
     }
 
     // Default: low chance to respond
@@ -211,7 +205,19 @@ ${message.sender}: ${message.content}
       return await this.shouldRespondAI(message, recentMessages, config.characterPersona);
     }
 
-    // Otherwise use probability-based judgment
+    // Handle 'high' priority (for "你们俩" etc.)
+    if (quickResult === 'high') {
+      const probability = 0.75; // 75% chance for group addressing
+      const shouldRespond = Math.random() < probability;
+      return {
+        shouldRespond,
+        reason: shouldRespond 
+          ? `Group addressing (${(probability * 100).toFixed(0)}%)`
+          : `Skipped by probability (${(probability * 100).toFixed(0)}% chance)`,
+      };
+    }
+
+    // Otherwise use probability-based judgment for 'maybe'
     const isQuestion = /[？?]/.test(message.content);
     const probability = isQuestion 
       ? (config.questionProbability || 0.5)
