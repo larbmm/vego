@@ -254,10 +254,7 @@ export class DreamTask {
     }
 
     this.saveDiary(memoryDir, targetDate, memoryResult.diary || '');
-    this.updateRecall(memoryDir, targetDate, memoryResult.summary || '');
     this.updateMemories(memoryDir, memoryResult.important_facts || []);
-    this.updateRelationship(memoryDir, memoryResult.relationship || {});
-    this.updateState(memoryDir, targetDate, memoryResult.state || {});
   }
 
   private saveDiary(memoryDir: string, targetDate: Date, diaryContent: string): void {
@@ -282,35 +279,6 @@ export class DreamTask {
     }
     
     console.info(`[DreamTask] Diary entry added to ${diaryPath}`);
-  }
-
-  private updateRecall(memoryDir: string, targetDate: Date, summary: string): void {
-    const recallPath = path.join(memoryDir, 'recall.md');
-
-    let summaries: string[] = [];
-    if (fs.existsSync(recallPath)) {
-      const content = fs.readFileSync(recallPath, 'utf-8');
-      summaries = content
-        .split('\n')
-        .filter((line) => line.startsWith('- '))
-        .map((line) => line.substring(2));
-    }
-
-    if (summary) {
-      const dateStr = targetDate.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' });
-      const newEntry = `${dateStr} ${summary}`;
-      summaries = [newEntry, ...summaries.filter((s) => !s.startsWith(dateStr))];
-    }
-
-    summaries = summaries.slice(0, 5);
-
-    let recallContent = '# 近期记忆\n\n最近发生的事情：\n\n';
-    for (const s of summaries) {
-      recallContent += `- ${s}\n`;
-    }
-
-    fs.writeFileSync(recallPath, recallContent, 'utf-8');
-    console.info(`[DreamTask] Recall updated with ${summaries.length} entries`);
   }
 
   private updateMemories(memoryDir: string, importantFacts: string[]): void {
@@ -343,129 +311,6 @@ export class DreamTask {
 
     fs.writeFileSync(memoriesPath, content, 'utf-8');
     console.info(`[DreamTask] Updated memories.md with ${existingFacts.length} facts`);
-  }
-
-  private updateRelationship(memoryDir: string, relationship: any): void {
-    if (!relationship) return;
-
-    const changes = relationship.changes || [];
-    const newPatterns = relationship.new_patterns || [];
-
-    if (changes.length === 0 && newPatterns.length === 0) return;
-
-    const relationshipPath = path.join(memoryDir, 'relationship.md');
-
-    let existingContent = '';
-    if (fs.existsSync(relationshipPath)) {
-      existingContent = fs.readFileSync(relationshipPath, 'utf-8');
-    }
-
-    const today = new Date().toISOString().split('T')[0];
-
-    let newSection = '';
-    if (changes.length > 0) {
-      newSection += `### ${today} 关系变化\n`;
-      for (const change of changes) {
-        newSection += `- ${change}\n`;
-      }
-      newSection += '\n';
-    }
-
-    if (newPatterns.length > 0) {
-      newSection += `### ${today} 新的互动模式\n`;
-      for (const pattern of newPatterns) {
-        newSection += `- ${pattern}\n`;
-      }
-      newSection += '\n';
-    }
-
-    let updatedContent: string;
-    if (existingContent) {
-      const lines = existingContent.split('\n');
-      let insertPos = 0;
-      for (let i = 0; i < lines.length; i++) {
-        if (lines[i].startsWith('### ') && lines[i].includes('关系变化')) {
-          insertPos = i;
-          break;
-        } else if (lines[i].startsWith('## ')) {
-          insertPos = i + 1;
-        }
-      }
-      lines.splice(insertPos, 0, newSection.trim());
-      updatedContent = lines.join('\n');
-    } else {
-      updatedContent = '# 关系图式\n\n记录我们之间关系的发展变化。\n\n' + newSection;
-    }
-
-    fs.writeFileSync(relationshipPath, updatedContent, 'utf-8');
-    console.info('[DreamTask] Relationship updated');
-  }
-
-  private updateState(memoryDir: string, targetDate: Date, state: any): void {
-    const statePath = path.join(memoryDir, 'state.md');
-
-    const mood = state.mood || '';
-    const interests = state.interests || [];
-    const preferences = state.preferences || [];
-
-    if (!mood && interests.length === 0 && preferences.length === 0) return;
-
-    let existingState: {
-      mood: string;
-      interests: string[];
-      preferences: string[];
-      lastUpdated: string;
-    } = {
-      mood: '',
-      interests: [],
-      preferences: [],
-      lastUpdated: '',
-    };
-
-    if (fs.existsSync(statePath)) {
-      const content = fs.readFileSync(statePath, 'utf-8');
-      const moodMatch = content.match(/\*\*当前心情\*\*：(.+)/);
-      if (moodMatch) {
-        existingState.mood = moodMatch[1].trim();
-      }
-      const interestSection = content.match(/\*\*近期兴趣\*\*：\n([\s\S]*?)(?=\*\*|$)/);
-      if (interestSection) {
-        existingState.interests = (interestSection[1].match(/- (.+)/g) || []).map((m) => m.substring(2));
-      }
-      const prefSection = content.match(/\*\*偏好变化\*\*：\n([\s\S]*?)(?=\*\*|$)/);
-      if (prefSection) {
-        existingState.preferences = (prefSection[1].match(/- (.+)/g) || []).map((m) => m.substring(2));
-      }
-    }
-
-    if (mood) {
-      existingState.mood = mood;
-    }
-    if (interests.length > 0) {
-      existingState.interests = [...interests, ...existingState.interests.filter((i) => !interests.includes(i))];
-      existingState.interests = existingState.interests.slice(0, 5);
-    }
-    if (preferences.length > 0) {
-      existingState.preferences = [...preferences, ...existingState.preferences.filter((p) => !preferences.includes(p))];
-      existingState.preferences = existingState.preferences.slice(0, 5);
-    }
-
-    existingState.lastUpdated = targetDate.toISOString().split('T')[0];
-
-    let stateContent = '# 当前状态\n\n';
-    stateContent += `**当前心情**：${existingState.mood}\n\n`;
-    stateContent += '**近期兴趣**：\n';
-    for (const interest of existingState.interests) {
-      stateContent += `- ${interest}\n`;
-    }
-    stateContent += '\n**偏好变化**：\n';
-    for (const pref of existingState.preferences) {
-      stateContent += `- ${pref}\n`;
-    }
-    stateContent += `\n*最后更新：${existingState.lastUpdated}*\n`;
-
-    fs.writeFileSync(statePath, stateContent, 'utf-8');
-    console.info('[DreamTask] State updated');
   }
 }
 
@@ -523,25 +368,23 @@ export class WeeklyReviewTask {
 
   private collectReviewData(memoryDir: string): any {
     const data = {
-      recall: '',
-      state: '',
-      relationship: '',
+      diary: '',
+      memories: '',
       persona_summary: '',
     };
 
-    const recallPath = path.join(memoryDir, 'recall.md');
-    if (fs.existsSync(recallPath)) {
-      data.recall = fs.readFileSync(recallPath, 'utf-8');
+    // 读取最近7天的日记
+    const diaryPath = path.join(memoryDir, 'diary.md');
+    if (fs.existsSync(diaryPath)) {
+      const diaryContent = fs.readFileSync(diaryPath, 'utf-8');
+      // 提取最近的日记条目（简单处理，取最后2000字符）
+      data.diary = diaryContent.slice(-2000);
     }
 
-    const statePath = path.join(memoryDir, 'state.md');
-    if (fs.existsSync(statePath)) {
-      data.state = fs.readFileSync(statePath, 'utf-8');
-    }
-
-    const relationshipPath = path.join(memoryDir, 'relationship.md');
-    if (fs.existsSync(relationshipPath)) {
-      data.relationship = fs.readFileSync(relationshipPath, 'utf-8');
+    // 读取长期记忆
+    const memoriesPath = path.join(memoryDir, 'memories.md');
+    if (fs.existsSync(memoriesPath)) {
+      data.memories = fs.readFileSync(memoriesPath, 'utf-8');
     }
 
     const personaDir = path.join(this.character.workspacePath, 'persona');
