@@ -140,14 +140,8 @@ export class TelegramBot {
             }
           );
 
-          // 如果消息没有提到自己，不要回复（即使AI判断说要回复）
-          if (!mentionsMe && !isReplyToMe && !decision.shouldRespond) {
-            return;
-          }
-          
-          // 如果消息没有明确提到自己，但AI判断说要回复，也不回复
-          // 只有在被明确提及或回复时才回复
-          if (!mentionsMe && !isReplyToMe) {
+          // 如果判断结果是不回复，则跳过
+          if (!decision.shouldRespond) {
             return;
           }
         } else if (isGroup) {
