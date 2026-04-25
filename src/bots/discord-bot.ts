@@ -56,7 +56,7 @@ export class DiscordBot {
       );
     }
 
-    this.client.on('ready', () => {
+    this.client.once('clientReady', () => {
       this.botId = this.client.user?.id || '';
       console.log(`[DiscordBot:${this.characterName}] Logged in as ${this.client.user?.tag}`);
     });
@@ -117,8 +117,40 @@ export class DiscordBot {
           ? (await msg.channel.messages.fetch(msg.reference.messageId)).author.id === this.botId
           : false;
 
+        // Check if this is a private channel (hidden from @everyone)
+        let isPrivateChannel = false;
+        if (isGuild && msg.channel.type === 0) { // Text channel in guild
+          try {
+            const channel = msg.channel as any;
+            
+            // Check if @everyone role is denied VIEW_CHANNEL permission
+            if (channel.guild && channel.permissionOverwrites) {
+              const everyoneRole = channel.guild.roles.everyone;
+              const everyoneOverwrite = channel.permissionOverwrites.cache.get(everyoneRole.id);
+              
+              if (everyoneOverwrite) {
+                // Check if VIEW_CHANNEL (1024) is denied
+                const viewChannelDenied = everyoneOverwrite.deny.has('ViewChannel');
+                isPrivateChannel = viewChannelDenied;
+                console.log(`[DiscordBot:${this.characterName}] Channel is ${isPrivateChannel ? 'PRIVATE' : 'PUBLIC'} (ViewChannel denied for @everyone: ${viewChannelDenied})`);
+              } else {
+                console.log(`[DiscordBot:${this.characterName}] No permission override for @everyone, treating as PUBLIC`);
+              }
+            }
+          } catch (error) {
+            console.warn(`[DiscordBot:${this.characterName}] Failed to check channel privacy:`, error);
+          }
+        }
+
         // For guild (server) messages, check if should respond
-        if (isGuild && this.groupParticipation) {
+        console.log(`[DiscordBot:${this.characterName}] isGuild: ${isGuild}, isPrivateChannel: ${isPrivateChannel}, hasGroupParticipation: ${!!this.groupParticipation}`);
+        
+        // If it's a private channel, treat as DM - always respond
+        if (isGuild && isPrivateChannel) {
+          console.log(`[DiscordBot:${this.characterName}] Treating as private chat (private channel)`);
+          // Skip group participation logic, process as normal message
+        } else if (isGuild && this.groupParticipation) {
+          console.log(`[DiscordBot:${this.characterName}] Using group participation logic (public channel)`);
           let recentMessages = sharedGroupCache.getMessages(channelId);
 
           // 先过滤掉过期的消息
@@ -162,10 +194,14 @@ export class DiscordBot {
             }
           );
 
+          console.log(`[DiscordBot:${this.characterName}] Decision: ${decision.shouldRespond} (${decision.reason})`);
+
           if (!decision.shouldRespond) {
+            console.log(`[DiscordBot:${this.characterName}] Skipping message based on decision`);
             return;
           }
         } else if (isGuild) {
+          console.log(`[DiscordBot:${this.characterName}] No group participation, checking mentions`);
           // No group participation logic, skip guild messages unless mentioned/replied
           if (!mentionsMe && !isReplyToMe) {
             console.log(`[DiscordBot:${this.characterName}] Skipping guild message (not mentioned/replied)`);
@@ -177,11 +213,11 @@ export class DiscordBot {
 
         const message: UnifiedMessage = {
           platform: 'discord',
-          user_id: isGuild ? `${userId}@${channelId}` : userId,
+          user_id: (isGuild && !isPrivateChannel) ? `${userId}@${channelId}` : userId,
           platform_message_id: msg.id,
           content: msg.content,
           timestamp: new Date(),
-          senderName: isGuild ? senderName : undefined,
+          senderName: (isGuild && !isPrivateChannel) ? senderName : undefined,
         };
 
         console.log(`[DiscordBot:${this.characterName}] Calling handler with user_id: ${message.user_id}`);

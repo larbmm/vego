@@ -54,7 +54,7 @@ export class GPTClient {
       weekday: 'long'
     });
     
-    const timeInfo = `\n\n---\n当前时间：${currentTime}\n\n【重要规则】\n1. 对话历史中的时间戳格式 (时间: YYYY/MM/DD HH:mm) 是系统自动添加的元数据，仅供你了解对话发生的时间。\n2. 你的回复中绝对不要包含任何时间戳、时间标注、括号格式或类似的元数据格式。\n3. 不要模仿或重复这种 (时间: ...) 的格式。\n4. 直接用自然语言对话，就像平时聊天一样。\n`;
+    const timeInfo = `\n\n---\n当前时间：${currentTime}\n\n【时间说明】\n1. 对话历史中最后一条用户消息会标注时间 (时间: YYYY/MM/DD HH:mm)，这是系统添加的元数据。\n2. 请根据"当前时间"来判断现在是早上、中午、下午还是晚上。\n3. 你的回复中不要包含时间戳或类似的格式标注。\n---\n`;
 
     // 添加场景信息
     const sceneInfo = isGroupChat 
@@ -72,14 +72,22 @@ export class GPTClient {
   ): Promise<string> {
     const systemPrompt = await this.buildSystemPrompt(userId, isGroupChat);
 
-    // Format conversation history with timestamps
-    // Only add timestamps to user messages, not assistant messages
-    // This prevents the AI from mimicking the timestamp format
-    const formattedHistory = conversationHistory.map((msg) => {
+    // Format conversation history
+    // Only add timestamp to the most recent user message to provide time context
+    // Find the index of the last user message
+    let lastUserMessageIndex = -1;
+    for (let i = conversationHistory.length - 1; i >= 0; i--) {
+      if (conversationHistory[i].role === 'user') {
+        lastUserMessageIndex = i;
+        break;
+      }
+    }
+    
+    const formattedHistory = conversationHistory.map((msg, index) => {
       let content = msg.content;
       
-      // Only add timestamp to user messages
-      if (msg.role === 'user' && msg.created_at) {
+      // Only add timestamp to the last user message
+      if (index === lastUserMessageIndex && msg.created_at) {
         const msgTime = new Date(msg.created_at);
         const timeStr = msgTime.toLocaleString('zh-CN', {
           timeZone: 'Asia/Shanghai',
@@ -89,7 +97,6 @@ export class GPTClient {
           hour: '2-digit',
           minute: '2-digit',
         });
-        // Use parentheses to make it look like system metadata
         content = `(时间: ${timeStr}) ${content}`;
       }
       
