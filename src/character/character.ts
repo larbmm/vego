@@ -11,6 +11,7 @@ export class Character {
   apiBase: string;
   apiModel: string;
   memoryConfig: MemoryConfig;
+  presetPath?: string;
 
   memoryManager?: MemoryManager;
   gptClient?: GPTClient;
@@ -32,7 +33,8 @@ export class Character {
     apiKey: string,
     apiBase: string,
     apiModel: string,
-    memoryConfig: MemoryConfig
+    memoryConfig: MemoryConfig,
+    presetPath?: string
   ) {
     this.name = name;
     this.workspacePath = workspacePath;
@@ -41,6 +43,7 @@ export class Character {
     this.apiBase = apiBase;
     this.apiModel = apiModel;
     this.memoryConfig = memoryConfig;
+    this.presetPath = presetPath;
   }
 
   async initialize(): Promise<void> {
@@ -51,7 +54,9 @@ export class Character {
       this.workspacePath,
       this.apiKey,
       this.apiBase,
-      this.apiModel
+      this.apiModel,
+      60000, // timeout
+      this.presetPath // 传入预设路径
     );
 
     this.router = new MessageRouter();

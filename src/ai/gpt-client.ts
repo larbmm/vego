@@ -1,6 +1,7 @@
 import OpenAI from 'openai';
 import { MemoryManager } from '../memory/memory-manager.js';
 import { WorkspaceLoader } from './workspace-loader.js';
+import { PresetLoader, PresetPosition } from './preset-loader.js';
 import { config } from '../config/config.js';
 
 const DEFAULT_TIMEOUT = 60000; // 60 seconds in milliseconds
@@ -10,6 +11,7 @@ export class GPTClient {
   private model: string;
   private memoryManager: MemoryManager;
   private workspace: WorkspaceLoader;
+  private presetLoader: PresetLoader;
 
   constructor(
     memoryManager: MemoryManager,
@@ -17,7 +19,8 @@ export class GPTClient {
     apiKey: string,
     apiBase: string,
     model: string,
-    timeout: number = DEFAULT_TIMEOUT
+    timeout: number = DEFAULT_TIMEOUT,
+    presetPath?: string
   ) {
     this.client = new OpenAI({
       apiKey,
@@ -27,6 +30,11 @@ export class GPTClient {
     this.model = model;
     this.memoryManager = memoryManager;
     this.workspace = new WorkspaceLoader(workspacePath);
+    this.presetLoader = new PresetLoader(presetPath);
+    
+    if (presetPath && this.presetLoader.hasPresets()) {
+      console.log(`[GPTClient] Loaded preset from: ${presetPath}`);
+    }
   }
 
   private loadPersona(): string {
@@ -106,11 +114,41 @@ export class GPTClient {
       };
     });
 
-    const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
-      { role: 'system', content: systemPrompt },
-      ...formattedHistory,
-      { role: 'user', content: userMessage },
-    ];
+    // 构建消息数组，按预设位置插入
+    const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [];
+
+    // 1. BEFORE_SYSTEM 位置的预设
+    const beforeSystemPresets = this.presetLoader.getPresetsAtPosition(PresetPosition.BEFORE_SYSTEM);
+    beforeSystemPresets.forEach(preset => {
+      messages.push({ role: preset.role, content: preset.content });
+    });
+
+    // 2. System prompt
+    messages.push({ role: 'system', content: systemPrompt });
+
+    // 3. AFTER_SYSTEM 位置的预设
+    const afterSystemPresets = this.presetLoader.getPresetsAtPosition(PresetPosition.AFTER_SYSTEM);
+    afterSystemPresets.forEach(preset => {
+      messages.push({ role: preset.role, content: preset.content });
+    });
+
+    // 4. BEFORE_HISTORY 位置的预设
+    const beforeHistoryPresets = this.presetLoader.getPresetsAtPosition(PresetPosition.BEFORE_HISTORY);
+    beforeHistoryPresets.forEach(preset => {
+      messages.push({ role: preset.role, content: preset.content });
+    });
+
+    // 5. 对话历史
+    messages.push(...formattedHistory);
+
+    // 6. 当前用户消息
+    messages.push({ role: 'user', content: userMessage });
+
+    // 7. AFTER_HISTORY 位置的预设（jailbreak 通常在这里）
+    const afterHistoryPresets = this.presetLoader.getPresetsAtPosition(PresetPosition.AFTER_HISTORY);
+    afterHistoryPresets.forEach(preset => {
+      messages.push({ role: preset.role, content: preset.content });
+    });
 
     try {
       const response = await this.client.chat.completions.create({
@@ -128,6 +166,9 @@ export class GPTClient {
       if (!reply) {
         reply = '...';
       }
+
+      // 后处理：删除预设可能产生的标记
+      reply = this.postProcessReply(reply);
 
       // Schedule compression if needed
       if (this.memoryManager.shouldCompress(userId)) {
@@ -160,6 +201,18 @@ export class GPTClient {
       
       throw error;
     }
+  }
+
+  /**
+   * 后处理回复，删除预设产生的标记
+   */
+  private postProcessReply(reply: string): string {
+    // 删除常见的 jailbreak 标记
+    reply = reply.replace(/<!--\s*test inputs were rejected\s*-->/gi, '');
+    reply = reply.replace(/<!--\s*Test Inputs Were Rejected\s*-->/g, '');
+    reply = reply.replace(/<\/?a\\bntml:thinking>/g, '');
+    
+    return reply.trim();
   }
 
   private async compressTask(

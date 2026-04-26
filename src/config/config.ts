@@ -85,6 +85,7 @@ export interface Config {
     model: string;
   };
   timezone: string;  // 时区设置，如 'Asia/Shanghai'
+  preset_path?: string;  // 全局预设文件路径（可选）
   character: Record<string, CharacterConfig>;
   memory: MemoryConfig;
   scheduler: SchedulerConfig;
@@ -108,6 +109,7 @@ function loadConfig(): Config {
       model: rawConfig.api?.model || '',
     },
     timezone: rawConfig.timezone || 'Asia/Shanghai',  // 默认东八区
+    preset_path: rawConfig.preset_path,  // 全局预设路径
     character: {},
     memory: {
       max_history_messages: rawConfig.memory?.max_history_messages || 100,
@@ -144,7 +146,7 @@ function loadConfig(): Config {
     const charData = charConfig as any;
     config.character[charName] = {
       name: charName,
-      display_name: charData.display_name,  // 添加这一行
+      display_name: charData.display_name,
       path: charData.path,
       telegram_bot_token: charData.telegram_bot_token,
       discord_bot_token: charData.discord_bot_token,
@@ -175,6 +177,17 @@ export function getDatabasePath(charConfig: CharacterConfig): string {
 
 export function getConfigPath(): string {
   return CONFIG_PATH;
+}
+
+/**
+ * 获取预设文件的完整路径
+ * 预设路径相对于 .vego 目录
+ */
+export function getPresetPath(): string | undefined {
+  if (!config.preset_path) {
+    return undefined;
+  }
+  return path.join(VEGO_HOME, config.preset_path);
 }
 
 /**

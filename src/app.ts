@@ -1,4 +1,4 @@
-import { config, getWorkspacePath, getDatabasePath, getVegoHome } from './config/config.js';
+import { config, getWorkspacePath, getDatabasePath, getVegoHome, getPresetPath } from './config/config.js';
 import { Character } from './character/character.js';
 import { TelegramBot } from './bots/telegram-bot.js';
 import { DiscordBot } from './bots/discord-bot.js';
@@ -24,6 +24,12 @@ export class PersonaBotApp {
   async initialize(): Promise<void> {
     console.log('[App] Initializing PersonaBotApp...');
 
+    // 获取全局预设路径
+    const globalPresetPath = getPresetPath();
+    if (globalPresetPath) {
+      console.log(`[App] Using global preset: ${globalPresetPath}`);
+    }
+
     for (const [charName, charConfig] of Object.entries(config.character)) {
       const workspacePath = getWorkspacePath(charConfig);
       const databasePath = getDatabasePath(charConfig);
@@ -35,7 +41,8 @@ export class PersonaBotApp {
         config.api.key,
         config.api.base,
         config.api.model,
-        config.memory
+        config.memory,
+        globalPresetPath  // 使用全局预设路径
       );
 
       await char.initialize();
