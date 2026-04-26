@@ -197,9 +197,22 @@ export class PresetLoader {
       position = PresetPosition.AFTER_HISTORY;
     }
 
+    // 修复 JSON 转义问题：<a\bntml: 在 JSON 中 \b 会被解析为退格符（ASCII 8）
+    // 实际存储为 <a[退格]ntml:，显示时退格符会删除 a，变成 <ntml:
+    let content = prompt.content || '';
+    
+    // 检查是否包含退格符
+    if (content.includes('\x08')) {
+      // 替换 <a[退格]ntml: 为 <a\bntml:
+      content = content.replace(/<a\x08ntml:/g, '<a\\bntml:');
+      // 替换结束标签 </a[退格]ntml: 为 </a\bntml:
+      content = content.replace(/<\/a\x08ntml:/g, '</a\\bntml:');
+      console.log('[PresetLoader] Fixed JSON escape issue: restored <a\\bntml: tags');
+    }
+
     return {
       role: (prompt.role as 'system' | 'user' | 'assistant') || 'system',
-      content: prompt.content || '',
+      content,
       position,
       enabled: prompt.enabled !== false,
       order: prompt.injection_order || 100,

@@ -147,7 +147,9 @@ export class GPTClient {
     // 7. AFTER_HISTORY 位置的预设（jailbreak 通常在这里）
     const afterHistoryPresets = this.presetLoader.getPresetsAtPosition(PresetPosition.AFTER_HISTORY);
     afterHistoryPresets.forEach(preset => {
-      messages.push({ role: preset.role, content: preset.content });
+      // 预处理预设内容，修复常见问题
+      const processedContent = this.preprocessPresetContent(preset.content);
+      messages.push({ role: preset.role, content: processedContent });
     });
 
     try {
@@ -211,8 +213,28 @@ export class GPTClient {
     reply = reply.replace(/<!--\s*test inputs were rejected\s*-->/gi, '');
     reply = reply.replace(/<!--\s*Test Inputs Were Rejected\s*-->/g, '');
     reply = reply.replace(/<\/?a\\bntml:thinking>/g, '');
+    reply = reply.replace(/<\/?antml:thinking>/g, '');  // 也删除可能出现的变体
     
     return reply.trim();
+  }
+
+  /**
+   * 预处理预设内容，修复常见问题
+   */
+  private preprocessPresetContent(content: string): string {
+    // 修复 JSON 转义问题
+    // 在 JSON 中 \b 会被解析为退格符（backspace），导致 <a\bntml: 变成 <
+    // 我们需要确保标签是正确的
+    
+    // 如果发现 < 或 <ntml:，说明 \b 被吃掉了，需要修复
+    if (content.includes('<') || content.includes('<ntml:')) {
+      // 尝试恢复为正确的格式
+      // 注意：在字符串中 \\ 表示一个反斜杠
+      content = content.replace(/<a?ntml:/g, '<a\\bntml:');
+      console.log('[GPTClient] Fixed JSON escape issue: restored <a\\bntml: tags');
+    }
+    
+    return content;
   }
 
   private async compressTask(
