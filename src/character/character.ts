@@ -122,6 +122,63 @@ export class Character {
     }
   }
 
+  /**
+   * 检测是否是告别后的简单回应
+   */
+  private isGoodbyeResponse(userMessage: string, lastAssistantMessage: string | null, recentHistory: Array<{role: string, content: string}>): boolean {
+    if (!lastAssistantMessage) return false;
+
+    // 告别关键词
+    const goodbyeKeywords = ['晚安', '明天见', '先这样', '拜拜', '再见', '睡了', '休息了', '下次聊'];
+    
+    // 简单回应（去除标点符号后匹配）
+    const cleanUserMsg = userMessage.trim().replace(/[！!。.~～，,、？?]/g, '');
+    const simpleResponses = ['晚安', '好的', '嗯', '好', '拜拜', '再见', '明天见', '睡吧', '你也是', '你也早点睡'];
+    
+    // 检查上一条 AI 消息是否包含告别语
+    const hasGoodbye = goodbyeKeywords.some(kw => lastAssistantMessage.includes(kw));
+    
+    // 检查用户消息是否是简单回应（完全匹配或包含）
+    const isSimple = simpleResponses.some(kw => 
+      cleanUserMsg === kw || cleanUserMsg.includes(kw)
+    );
+    
+    // 基本条件：有告别语 + 简单回应 + 长度限制
+    if (!hasGoodbye || !isSimple || cleanUserMsg.length > 10) {
+      return false;
+    }
+
+    // 检查最近3条消息中是否有负面情绪（吵架、冷战等）
+    const negativeKeywords = [
+      '生气', '气', '烦', '讨厌', '不想', '算了', '随便', '无所谓', 
+      '冷战', '吵架', '委屈', '难过', '伤心', '失望', '不理', '别说了',
+      '狠心', '过分', '太过', '受不了', '够了'
+    ];
+    
+    const recentMessages = recentHistory.slice(-3); // 最近3条消息
+    const hasNegativeEmotion = recentMessages.some(msg => 
+      negativeKeywords.some(kw => msg.content.includes(kw))
+    );
+    
+    // 如果有负面情绪，不跳过回复（可能需要安慰/解释）
+    if (hasNegativeEmotion) {
+      console.log(`[检测] 发现负面情绪上下文，不跳过回复`);
+      return false;
+    }
+    
+    // 检查 AI 的告别是否带有情绪（如果带情绪，可能需要回应）
+    const emotionalGoodbye = ['...', '哎', '唉', '好吧', '那', '如果', '要是'].some(kw => 
+      lastAssistantMessage.includes(kw)
+    );
+    
+    if (emotionalGoodbye) {
+      console.log(`[检测] AI 的告别带有情绪，不跳过回复`);
+      return false;
+    }
+    
+    return true;
+  }
+
   private async processMessage(userId: number, message: UnifiedMessage): Promise<string> {
     const history = this.memoryManager!.getConversationHistory(userId);
     const historyDict = history.map((msg) => ({
@@ -132,6 +189,31 @@ export class Character {
 
     // Check if it's a group chat (user_id contains @)
     const isGroupChat = message.user_id.includes('@');
+
+    // 检测是否是告别后的简单回应（仅私聊）
+    if (!isGroupChat && history.length > 0) {
+      const lastAssistantMsg = history
+        .slice()
+        .reverse()
+        .find(msg => msg.role === 'assistant');
+      
+      if (lastAssistantMsg && this.isGoodbyeResponse(message.content, lastAssistantMsg.content, history)) {
+        console.log(`[${this.name}] 检测到告别后的简单回应，跳过 AI 回复: "${message.content}"`);
+        
+        // 仍然存储用户消息到数据库
+        this.memoryManager!.storeMessage(
+          userId,
+          'user',
+          message.content,
+          message.platform,
+          message.platform_message_id,
+          message.senderName
+        );
+        
+        // 返回空字符串，不生成 AI 回复
+        return '';
+      }
+    }
 
     // Prepare group context if available
     let groupContextText = '';
@@ -191,6 +273,33 @@ export class Character {
 
       // Check if it's a group chat
       const isGroupChat = lastMessage.user_id.includes('@');
+
+      // 检测是否是告别后的简单回应（仅私聊）
+      if (!isGroupChat && history.length > 0) {
+        const lastAssistantMsg = history
+          .slice()
+          .reverse()
+          .find(msg => msg.role === 'assistant');
+        
+        if (lastAssistantMsg && this.isGoodbyeResponse(combinedContent, lastAssistantMsg.content, history)) {
+          console.log(`[${this.name}] 检测到告别后的简单回应（批量），跳过 AI 回复: "${combinedContent}"`);
+          
+          // 仍然存储所有用户消息到数据库
+          for (const msg of batch.messages) {
+            this.memoryManager!.storeMessage(
+              userId,
+              'user',
+              msg.content,
+              msg.platform,
+              msg.platform_message_id,
+              msg.senderName
+            );
+          }
+          
+          // 返回空字符串，不生成 AI 回复
+          return '';
+        }
+      }
 
       // Prepare group context if available
       let groupContextText = '';
