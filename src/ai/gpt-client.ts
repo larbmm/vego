@@ -1,7 +1,7 @@
 import OpenAI from 'openai';
 import { MemoryManager } from '../memory/memory-manager.js';
 import { WorkspaceLoader } from './workspace-loader.js';
-import { PresetLoader, PresetPosition } from './preset-loader.js';
+import { PresetLoader, PresetPosition, PresetItem } from './preset-loader.js';
 import { config } from '../config/config.js';
 
 const DEFAULT_TIMEOUT = 60000; // 60 seconds in milliseconds
@@ -19,8 +19,7 @@ export class GPTClient {
     apiKey: string,
     apiBase: string,
     model: string,
-    timeout: number = DEFAULT_TIMEOUT,
-    presetPath?: string
+    timeout: number = DEFAULT_TIMEOUT
   ) {
     this.client = new OpenAI({
       apiKey,
@@ -30,10 +29,19 @@ export class GPTClient {
     this.model = model;
     this.memoryManager = memoryManager;
     this.workspace = new WorkspaceLoader(workspacePath);
-    this.presetLoader = new PresetLoader(presetPath);
     
-    if (presetPath && this.presetLoader.hasPresets()) {
-      console.log(`[GPTClient] Loaded preset from: ${presetPath}`);
+    // 自动加载内置预设
+    console.log(`[GPTClient] Loading built-in preset`);
+    this.presetLoader = new PresetLoader();
+    
+    console.log(`[GPTClient] Preset loader has presets: ${this.presetLoader.hasPresets()}`);
+    console.log(`[GPTClient] Total presets: ${this.presetLoader.getAllPresets().length}`);
+    const inChat = this.presetLoader.getInChatPresets();
+    console.log(`[GPTClient] IN_CHAT presets: ${inChat.length}`);
+    if (inChat.length > 0) {
+      inChat.forEach((p, i) => {
+        console.log(`[GPTClient]   Preset ${i}: position=${p.position}, depth=${p.depth}, role=${p.role}`);
+      });
     }
   }
 
@@ -138,19 +146,53 @@ export class GPTClient {
       messages.push({ role: preset.role, content: preset.content });
     });
 
-    // 5. 对话历史
-    messages.push(...formattedHistory);
+    // 5. 对话历史 + IN_CHAT 预设
+    // 获取需要插入到对话历史中的预设
+    const inChatPresets = this.presetLoader.getInChatPresetsByDepth();
+    
+    console.log(`[GPTClient] IN_CHAT preset groups: ${inChatPresets.size}`);
+    
+    if (inChatPresets.size > 0) {
+      // 有 IN_CHAT 预设,需要在特定位置插入
+      // 先添加所有历史消息
+      messages.push(...formattedHistory);
+      
+      // 注入 IN_CHAT 预设
+      this.injectInChatPresets(messages, inChatPresets);
+    } else {
+      // 没有 IN_CHAT 预设,直接添加历史
+      messages.push(...formattedHistory);
+    }
 
     // 6. 当前用户消息
     messages.push({ role: 'user', content: userMessage });
 
     // 7. AFTER_HISTORY 位置的预设（jailbreak 通常在这里）
-    const afterHistoryPresets = this.presetLoader.getPresetsAtPosition(PresetPosition.AFTER_HISTORY);
-    afterHistoryPresets.forEach(preset => {
-      // 预处理预设内容，修复常见问题
-      const processedContent = this.preprocessPresetContent(preset.content);
-      messages.push({ role: preset.role, content: processedContent });
-    });
+    const afterHistoryPresets = this.presetLoader.getAfterHistoryPresetsByDepth();
+    console.log(`[GPTClient] AFTER_HISTORY preset groups: ${afterHistoryPresets.size}`);
+    
+    if (afterHistoryPresets.size > 0) {
+      this.injectAfterHistoryPresets(messages, afterHistoryPresets);
+    }
+
+    // DEBUG: 输出预设注入情况
+    if (inChatPresets.size > 0 || afterHistoryPresets.size > 0) {
+      console.log('[GPTClient] Preset injection summary:');
+      console.log(`  - IN_CHAT preset groups: ${inChatPresets.size}`);
+      console.log(`  - AFTER_HISTORY preset groups: ${afterHistoryPresets.size}`);
+      console.log(`  - Total messages: ${messages.length}`);
+      
+      // 保存完整请求到文件用于调试
+      const fs = await import('fs');
+      const path = await import('path');
+      const logDir = path.join(process.cwd(), '.vego', 'debug');
+      if (!fs.existsSync(logDir)) {
+        fs.mkdirSync(logDir, { recursive: true });
+      }
+      const logFile = path.join(logDir, `request-${new Date().toISOString().replace(/:/g, '-')}.json`);
+      fs.writeFileSync(logFile, JSON.stringify({ model: this.model, messages, temperature: 0.8, max_tokens: 500 }, null, 2));
+      console.log(`[GPTClient] Request saved to: ${logFile}`);
+    }
 
     try {
       const response = await this.client.chat.completions.create({
@@ -206,6 +248,91 @@ export class GPTClient {
   }
 
   /**
+   * 注入 IN_CHAT 预设到对话历史中
+   */
+  private injectInChatPresets(
+    messages: OpenAI.Chat.ChatCompletionMessageParam[],
+    presets: Map<number, PresetItem[]>
+  ): void {
+    // Store initial length before any insertions
+    const initialLength = messages.length;
+    console.log(`[GPTClient] Messages before IN_CHAT injection: ${initialLength}`);
+    
+    // Process each depth group (sorted by depth ascending to avoid splitting groups)
+    // Smaller depths (higher indices) are processed first so they don't split larger depth groups
+    const sortedDepths = Array.from(presets.keys()).sort((a, b) => a - b);
+    
+    for (const depth of sortedDepths) {
+      const group = presets.get(depth)!;
+      
+      // Sort by injection_order (ascending, default to 100)
+      group.sort((a, b) => (a.order || 100) - (b.order || 100));
+      
+      // Calculate insert index using initial length
+      const insertIndex = initialLength - depth;
+      
+      // Validate bounds
+      if (insertIndex < 0 || insertIndex > messages.length) {
+        console.warn(`[GPTClient] ✗ Invalid insert index: ${insertIndex} (depth=${depth}, length=${messages.length})`);
+        continue;
+      }
+      
+      console.log(`[GPTClient] Injecting ${group.length} IN_CHAT preset(s) at index ${insertIndex} (depth=${depth})`);
+      
+      // Insert all presets in the group at the same position
+      for (const preset of group) {
+        const processedContent = this.preprocessPresetContent(preset.content);
+        messages.splice(insertIndex, 0, { role: preset.role, content: processedContent });
+        console.log(`[GPTClient] ✓ Injected preset (role=${preset.role})`);
+      }
+    }
+    
+    console.log(`[GPTClient] Messages after IN_CHAT injection: ${messages.length}`);
+  }
+
+  /**
+   * 注入 AFTER_HISTORY 预设到对话历史之后
+   */
+  private injectAfterHistoryPresets(
+    messages: OpenAI.Chat.ChatCompletionMessageParam[],
+    presets: Map<number, PresetItem[]>
+  ): void {
+    console.log(`[GPTClient] Messages before AFTER_HISTORY injection: ${messages.length}`);
+    
+    // Process each depth group (sorted by depth descending - from bottom up)
+    // Larger depths are processed first to maintain correct relative positions
+    const sortedDepths = Array.from(presets.keys()).sort((a, b) => b - a);
+    
+    for (const depth of sortedDepths) {
+      const group = presets.get(depth)!;
+      
+      // Sort by injection_order (ascending, default to 100)
+      group.sort((a, b) => (a.order || 100) - (b.order || 100));
+      
+      // For AFTER_HISTORY, depth is relative to the END of the message array
+      // depth=0 means at the very end, depth=2 means 2 positions from the end
+      const insertIndex = messages.length - depth;
+      
+      // Validate bounds
+      if (insertIndex < 0 || insertIndex > messages.length) {
+        console.warn(`[GPTClient] ✗ Invalid insert index: ${insertIndex} (depth=${depth}, length=${messages.length})`);
+        continue;
+      }
+      
+      console.log(`[GPTClient] Injecting ${group.length} AFTER_HISTORY preset(s) at index ${insertIndex} (depth=${depth})`);
+      
+      // Insert all presets in the group at the same position
+      for (const preset of group) {
+        const processedContent = this.preprocessPresetContent(preset.content);
+        messages.splice(insertIndex, 0, { role: preset.role, content: processedContent });
+        console.log(`[GPTClient] ✓ Injected preset (role=${preset.role})`);
+      }
+    }
+    
+    console.log(`[GPTClient] Messages after AFTER_HISTORY injection: ${messages.length}`);
+  }
+
+  /**
    * 后处理回复，删除预设产生的标记
    */
   private postProcessReply(reply: string): string {
@@ -219,21 +346,10 @@ export class GPTClient {
   }
 
   /**
-   * 预处理预设内容，修复常见问题
+   * 预处理预设内容
    */
   private preprocessPresetContent(content: string): string {
-    // 修复 JSON 转义问题
-    // 在 JSON 中 \b 会被解析为退格符（backspace），导致 <a\bntml: 变成 <
-    // 我们需要确保标签是正确的
-    
-    // 如果发现 < 或 <ntml:，说明 \b 被吃掉了，需要修复
-    if (content.includes('<') || content.includes('<ntml:')) {
-      // 尝试恢复为正确的格式
-      // 注意：在字符串中 \\ 表示一个反斜杠
-      content = content.replace(/<a?ntml:/g, '<a\\bntml:');
-      console.log('[GPTClient] Fixed JSON escape issue: restored <a\\bntml: tags');
-    }
-    
+    // 预设内容已经在 PresetLoader 中修复过了,这里直接返回
     return content;
   }
 

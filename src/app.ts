@@ -24,12 +24,6 @@ export class PersonaBotApp {
   async initialize(): Promise<void> {
     console.log('[App] Initializing PersonaBotApp...');
 
-    // 获取全局预设路径
-    const globalPresetPath = getPresetPath();
-    if (globalPresetPath) {
-      console.log(`[App] Using global preset: ${globalPresetPath}`);
-    }
-
     for (const [charName, charConfig] of Object.entries(config.character)) {
       const workspacePath = getWorkspacePath(charConfig);
       const databasePath = getDatabasePath(charConfig);
@@ -41,8 +35,7 @@ export class PersonaBotApp {
         config.api.key,
         config.api.base,
         config.api.model,
-        config.memory,
-        globalPresetPath  // 使用全局预设路径
+        config.memory
       );
 
       await char.initialize();

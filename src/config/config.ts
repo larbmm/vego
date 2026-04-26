@@ -62,6 +62,12 @@ export interface GroupChatConfig {
   message_expiry_minutes: number;
 }
 
+export interface PresetConfig {
+  filter_mode: 'all' | 'whitelist' | 'blacklist';
+  whitelist: string[];
+  blacklist: string[];
+}
+
 export interface MemoryConfig {
   max_history_messages: number;
   max_recent_messages: number;
@@ -85,13 +91,13 @@ export interface Config {
     model: string;
   };
   timezone: string;  // 时区设置，如 'Asia/Shanghai'
-  preset_path?: string;  // 全局预设文件路径（可选）
   character: Record<string, CharacterConfig>;
   memory: MemoryConfig;
   scheduler: SchedulerConfig;
   weekly_review: WeeklyReviewConfig;
   proactive_chat: ProactiveChatConfig;
   group_chat: GroupChatConfig;
+  preset: PresetConfig;
 }
 
 function loadConfig(): Config {
@@ -109,7 +115,6 @@ function loadConfig(): Config {
       model: rawConfig.api?.model || '',
     },
     timezone: rawConfig.timezone || 'Asia/Shanghai',  // 默认东八区
-    preset_path: rawConfig.preset_path,  // 全局预设路径
     character: {},
     memory: {
       max_history_messages: rawConfig.memory?.max_history_messages || 100,
@@ -138,6 +143,11 @@ function loadConfig(): Config {
       question_response_probability: rawConfig.group_chat?.question_response_probability || 0.6,
       normal_response_probability: rawConfig.group_chat?.normal_response_probability || 0.2,
       message_expiry_minutes: rawConfig.group_chat?.message_expiry_minutes || 30,
+    },
+    preset: {
+      filter_mode: rawConfig.preset?.filter_mode || 'all',
+      whitelist: rawConfig.preset?.whitelist || [],
+      blacklist: rawConfig.preset?.blacklist || [],
     },
   };
 
@@ -181,13 +191,10 @@ export function getConfigPath(): string {
 
 /**
  * 获取预设文件的完整路径
- * 预设路径相对于 .vego 目录
+ * 现在预设固定为 .vego/vego-preset.json
  */
-export function getPresetPath(): string | undefined {
-  if (!config.preset_path) {
-    return undefined;
-  }
-  return path.join(VEGO_HOME, config.preset_path);
+export function getPresetPath(): string {
+  return path.join(VEGO_HOME, 'vego-preset.json');
 }
 
 /**
