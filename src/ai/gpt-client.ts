@@ -173,4 +173,17 @@ export class GPTClient {
       console.warn('[GPTClient] Failed to compress conversation:', error);
     }
   }
+
+  /**
+   * Update API configuration
+   */
+  updateApiConfig(apiKey: string, apiBase: string, model: string): void {
+    this.client = new OpenAI({
+      apiKey,
+      baseURL: apiBase,
+      timeout: DEFAULT_TIMEOUT,
+    });
+    this.model = model;
+    console.log(`[GPTClient] API config updated: base=${apiBase}, model=${model}`);
+  }
 }

@@ -379,4 +379,28 @@ export class Character {
       this.memoryManager.close();
     }
   }
+
+  /**
+   * Update API configuration
+   */
+  updateApiConfig(apiKey: string, apiBase: string, apiModel: string): void {
+    this.apiKey = apiKey;
+    this.apiBase = apiBase;
+    this.apiModel = apiModel;
+    
+    if (this.gptClient) {
+      this.gptClient.updateApiConfig(apiKey, apiBase, apiModel);
+    }
+  }
+
+  /**
+   * Update memory configuration
+   */
+  updateMemoryConfig(memoryConfig: MemoryConfig): void {
+    this.memoryConfig = memoryConfig;
+    
+    if (this.memoryManager) {
+      this.memoryManager.updateConfig(memoryConfig);
+    }
+  }
 }

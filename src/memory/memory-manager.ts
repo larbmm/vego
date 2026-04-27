@@ -52,4 +52,12 @@ export class MemoryManager {
   close(): void {
     this.db.close();
   }
+
+  /**
+   * Update memory configuration
+   */
+  updateConfig(memoryConfig: MemoryConfig): void {
+    this.memoryConfig = memoryConfig;
+    console.log(`[MemoryManager] Memory config updated: max_history=${memoryConfig.max_history_messages}, max_recent=${memoryConfig.max_recent_messages}`);
+  }
 }

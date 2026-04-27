@@ -158,11 +158,64 @@ function loadConfig(): Config {
 
 export let config = loadConfig();
 
+// Hot reload callback type
+type ConfigChangeCallback = (newConfig: Config, oldConfig: Config) => void | Promise<void>;
+const configChangeCallbacks: ConfigChangeCallback[] = [];
+
 export function reloadConfig(): Config {
   const newConfig = loadConfig();
   // Update the exported config object
   Object.assign(config, newConfig);
   return config;
+}
+
+/**
+ * Register a callback to be called when config changes
+ */
+export function onConfigChange(callback: ConfigChangeCallback): void {
+  configChangeCallbacks.push(callback);
+}
+
+/**
+ * Start watching config file for changes
+ */
+export function watchConfig(): void {
+  let debounceTimer: NodeJS.Timeout | null = null;
+  
+  console.log(`[Config] Watching config file for changes: ${CONFIG_PATH}`);
+  
+  fs.watch(CONFIG_PATH, (eventType) => {
+    if (eventType === 'change') {
+      // Debounce to avoid multiple rapid reloads
+      if (debounceTimer) {
+        clearTimeout(debounceTimer);
+      }
+      
+      debounceTimer = setTimeout(async () => {
+        try {
+          console.log('[Config] Config file changed, reloading...');
+          const oldConfig = { ...config };
+          const newConfig = loadConfig();
+          
+          // Update the exported config object
+          Object.assign(config, newConfig);
+          
+          console.log('[Config] Config reloaded successfully');
+          
+          // Notify all registered callbacks
+          for (const callback of configChangeCallbacks) {
+            try {
+              await callback(newConfig, oldConfig);
+            } catch (error) {
+              console.error('[Config] Error in config change callback:', error);
+            }
+          }
+        } catch (error) {
+          console.error('[Config] Failed to reload config:', error);
+        }
+      }, 500); // 500ms debounce
+    }
+  });
 }
 
 export function getWorkspacePath(charConfig: CharacterConfig): string {
