@@ -228,7 +228,7 @@ function app() {
           // 显示详细的成功信息
           const displayName = this.newCharacterDisplayName || data.name;
           const copyNote = data.copy_from ? `\n\n已从 ${this.getCharacterDisplayName(data.copy_from)} 复制人设，请检查并修改。` : '';
-          alert(`✅ ${data.message || '创建成功！'}\n\n角色 "${displayName}" (${data.name}) 已创建并添加到列表中。${copyNote}\n\n下一步：\n1. 点击"编辑"按钮检查并修改人设\n2. 在"配置管理"中添加 bot token\n3. 重启应用`);
+          alert(`✅ ${data.message || '创建成功！'}\n\n角色 "${displayName}" (${data.name}) 已创建并添加到列表中。${copyNote}\n\n下一步：\n1. 点击"编辑"按钮检查并修改人设\n2. 在"配置管理"中添加 bot token\n3. 配置会自动加载，无需重启`);
         } else {
           const error = await res.json();
           alert('❌ 创建失败：' + error.error);
@@ -365,7 +365,7 @@ function app() {
     },
 
     async saveConfig() {
-      if (!confirm('确定保存配置吗？配置将在重启应用后生效。')) {
+      if (!confirm('确定保存配置吗？配置会自动重新加载，无需重启应用。')) {
         return;
       }
 
@@ -379,7 +379,7 @@ function app() {
 
         if (res.ok) {
           const data = await res.json();
-          alert(data.message || '保存成功');
+          alert('✅ ' + (data.message || '保存成功') + '\n\n配置已自动重新加载，立即生效！');
         } else {
           const error = await res.json();
           alert('保存失败：' + error.error);
