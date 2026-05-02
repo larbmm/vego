@@ -156,6 +156,7 @@ export class DreamTask {
         ],
         temperature: 0.7,
         max_tokens: 4000,
+        stream: false,
       });
 
       const content = response.choices[0].message.content?.trim() || '';
@@ -439,6 +440,7 @@ ${data.persona_summary}
         messages: [{ role: 'system', content: prompt }],
         temperature: 0.5,
         max_tokens: 1000,
+        stream: false,
       });
 
       return response.choices[0].message.content?.trim() || null;

@@ -161,6 +161,7 @@ ${message.sender}: ${message.content}
         messages: [{ role: 'system', content: prompt }],
         temperature: 0.7, // Higher temperature for more personality
         max_tokens: 150,
+        stream: false,
       });
 
       const content = response.choices[0].message.content?.trim() || '';

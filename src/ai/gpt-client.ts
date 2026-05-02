@@ -118,9 +118,11 @@ export class GPTClient {
         messages,
         temperature: 0.8,
         max_tokens: 500,
+        stream: false,
       });
 
       if (!response.choices || response.choices.length === 0) {
+        console.error('[GPTClient] Empty choices in response:', JSON.stringify(response, null, 2));
         throw new Error('No choices in response');
       }
 
