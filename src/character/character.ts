@@ -218,6 +218,7 @@ export class Character {
     // Prepare group context if available
     let groupContextText = '';
     let fullMessageContent = message.content; // 用于存储的完整内容
+    let messageToAI = message.content; // 发送给 AI 的内容
     
     if (isGroupChat && message.groupContext && message.groupContext.recentMessages.length > 0) {
       const members = message.groupContext.members.join('、');
@@ -228,13 +229,16 @@ export class Character {
       
       groupContextText = `\n\n[群聊上下文]\n群成员：${members}\n最近的聊天记录：\n${recentChats}\n[/群聊上下文]\n\n`;
       
-      // 存储时包含群聊上下文，这样在web界面能看到完整对话
-      fullMessageContent = groupContextText + message.content;
+      // 存储时保存群聊上下文（已包含当前消息）
+      fullMessageContent = groupContextText.trim();
+      
+      // 发送给 AI 时也只用群聊上下文（已包含当前消息，不要重复）
+      messageToAI = groupContextText.trim();
     }
 
     const response = await this.gptClient!.chat(
       userId, 
-      groupContextText + message.content, 
+      messageToAI, 
       historyDict, 
       isGroupChat
     );
@@ -304,6 +308,7 @@ export class Character {
       // Prepare group context if available
       let groupContextText = '';
       let fullUserMessage = combinedContent;
+      let messageToAI = combinedContent; // 发送给 AI 的内容
       
       if (isGroupChat && lastMessage.groupContext && lastMessage.groupContext.recentMessages.length > 0) {
         const members = lastMessage.groupContext.members.join('、');
@@ -314,13 +319,16 @@ export class Character {
         
         groupContextText = `\n\n[群聊上下文]\n群成员：${members}\n最近的聊天记录：\n${recentChats}\n[/群聊上下文]\n\n`;
         
-        // 将群聊上下文合并到用户消息中，用于存储到数据库
-        fullUserMessage = groupContextText + combinedContent;
+        // 存储时保存群聊上下文（已包含当前消息）
+        fullUserMessage = groupContextText.trim();
+        
+        // 发送给 AI 时也只用群聊上下文（已包含当前消息，不要重复）
+        messageToAI = groupContextText.trim();
       }
 
       const response = await this.gptClient!.chat(
         userId, 
-        groupContextText + combinedContent, 
+        messageToAI, 
         historyDict, 
         isGroupChat
       );
