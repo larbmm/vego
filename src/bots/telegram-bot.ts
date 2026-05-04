@@ -2,6 +2,7 @@ import { Telegraf, Context } from 'telegraf';
 import { UnifiedMessage, MessageHandler } from '../router/message.js';
 import { GroupParticipation, GroupMessage } from './group-participation.js';
 import { sharedGroupCache } from './shared-group-cache.js';
+import { colorLog } from '../utils/colors.js';
 
 export class TelegramBot {
   private bot: Telegraf;
@@ -213,7 +214,7 @@ export class TelegramBot {
   }
 
   async run(): Promise<void> {
-    console.log(`[TelegramBot:${this.characterName}] Starting...`);
+    console.log(colorLog('TelegramBot', `Starting ${this.characterName}...`));
     await this.bot.launch();
 
     process.once('SIGINT', () => this.bot.stop('SIGINT'));

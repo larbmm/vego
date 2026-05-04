@@ -7,6 +7,7 @@ import { config, getWorkspacePath, getDatabasePath, reloadConfig, getVegoHome } 
 import { DatabaseManager } from '../memory/database.js';
 import { WebLogger } from './logger.js';
 import { getTemplateWithName } from './character-template.js';
+import { colorLog } from '../utils/colors.js';
 
 const app = express();
 app.use(express.json());
@@ -460,7 +461,7 @@ app.put('/api/config', async (req, res) => {
     
     res.json({ 
       success: true, 
-      message: '配置已保存，需要重启应用才能生效' 
+      message: '配置已保存并自动重新加载，立即生效！' 
     });
   } catch (error: any) {
     res.status(400).json({ 
@@ -538,6 +539,6 @@ function formatUptime(seconds: number): string {
 
 export function startWebServer(port: number = 3000): void {
   app.listen(port, () => {
-    console.log(`[Web] Management interface available at http://localhost:${port}`);
+    console.log(colorLog('Web', `Management interface available at http://localhost:${port}`));
   });
 }

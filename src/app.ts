@@ -6,6 +6,7 @@ import { FeishuBot } from './bots/feishu-bot.js';
 import { Scheduler } from './scheduler/scheduler.js';
 import { DreamTask, WeeklyReviewTask } from './scheduler/tasks.js';
 import { startWebServer } from './web/server.js';
+import { colorLog, success } from './utils/colors.js';
 import * as path from 'path';
 
 export class PersonaBotApp {
@@ -22,12 +23,12 @@ export class PersonaBotApp {
   }
 
   async initialize(): Promise<void> {
-    console.log('[App] Initializing PersonaBotApp...');
+    console.log(colorLog('App', 'Initializing PersonaBotApp...'));
 
     // Initialize characters
     await this.initializeCharacters();
 
-    console.log(`✓ All ${this.characters.size} character(s) initialized`);
+    console.log(success(`All ${this.characters.size} character(s) initialized`));
 
     if (config.scheduler.enabled) {
       this.setupScheduler();
@@ -89,7 +90,7 @@ export class PersonaBotApp {
         this.tokenToCharacter.set(charConfig.feishu_app_id, char);
       }
 
-      console.log(`✓ Character '${charName}' initialized`);
+      console.log(success(`Character '${charName}' initialized`));
     }
   }
 
@@ -319,7 +320,7 @@ export class PersonaBotApp {
       }
     }
 
-    console.log(`✓ Character '${charName}' added`);
+    console.log(success(`Character '${charName}' added`));
   }
 
   private setupScheduler(): void {
@@ -332,7 +333,7 @@ export class PersonaBotApp {
     for (const [charName, char] of this.characters) {
       const dreamTask = new DreamTask(char, config.scheduler.min_conversations);
       this.scheduler.addTask(dreamTask.call.bind(dreamTask));
-      console.log(`✓ Scheduler task added for '${charName}'`);
+      console.log(success(`Scheduler task added for '${charName}'`));
     }
 
     if (config.weekly_review.enabled) {
@@ -343,7 +344,7 @@ export class PersonaBotApp {
           config.weekly_review.day_of_week,
           config.weekly_review.schedule_time
         );
-        console.log(`✓ Weekly review task added for '${charName}'`);
+        console.log(success(`Weekly review task added for '${charName}'`));
       }
     }
 
@@ -390,7 +391,7 @@ export class PersonaBotApp {
             );
           }
 
-          console.log(`✓ Proactive chat task added for '${currentName}' (${Math.floor(config.proactive_chat.active_hours_end) - Math.floor(config.proactive_chat.active_hours_start) + 1} hourly checks)`);
+          console.log(success(`Proactive chat task added for '${currentName}' (${Math.floor(config.proactive_chat.active_hours_end) - Math.floor(config.proactive_chat.active_hours_start) + 1} hourly checks)`));
         });
       })(char, tgBot, charName);
     }

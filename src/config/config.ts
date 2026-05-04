@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as toml from 'toml';
 import * as os from 'os';
 import { fileURLToPath } from 'url';
+import { colorLog } from '../utils/colors.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -17,7 +18,7 @@ function findVegoHome(): string {
 
   for (const location of locations) {
     if (fs.existsSync(location)) {
-      console.log(`[Config] Using .vego directory: ${location}`);
+      console.log(colorLog('Config', `Using .vego directory: ${location}`));
       return location;
     }
   }
@@ -182,7 +183,7 @@ export function onConfigChange(callback: ConfigChangeCallback): void {
 export function watchConfig(): void {
   let debounceTimer: NodeJS.Timeout | null = null;
   
-  console.log(`[Config] Watching config file for changes: ${CONFIG_PATH}`);
+  console.log(colorLog('Config', `Watching config file for changes: ${CONFIG_PATH}`));
   
   fs.watch(CONFIG_PATH, (eventType) => {
     if (eventType === 'change') {
@@ -193,14 +194,14 @@ export function watchConfig(): void {
       
       debounceTimer = setTimeout(async () => {
         try {
-          console.log('[Config] Config file changed, reloading...');
+          console.log(colorLog('Config', 'Config file changed, reloading...'));
           const oldConfig = { ...config };
           const newConfig = loadConfig();
           
           // Update the exported config object
           Object.assign(config, newConfig);
           
-          console.log('[Config] Config reloaded successfully');
+          console.log(colorLog('Config', 'Config reloaded successfully'));
           
           // Notify all registered callbacks
           for (const callback of configChangeCallbacks) {

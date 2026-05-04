@@ -1,5 +1,6 @@
 import { PersonaBotApp } from './app.js';
 import './web/logger.js'; // Initialize logger to intercept console
+import { colorLog } from './utils/colors.js';
 
 // Suppress punycode deprecation warning (from dependencies like whatwg-url)
 process.removeAllListeners('warning');
@@ -35,10 +36,10 @@ async function main() {
 
   try {
     await app.initialize();
-    console.log('[Main] Starting application...');
+    console.log(colorLog('Main', 'Starting application...'));
     await app.run();
   } catch (error) {
-    console.error('[Main] Fatal error:', error);
+    console.error(colorLog('Main', `Fatal error: ${error}`));
     process.exit(1);
   }
 }

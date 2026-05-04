@@ -1,6 +1,7 @@
 import * as cron from 'node-cron';
 import * as fs from 'fs';
 import * as path from 'path';
+import { colorLog } from '../utils/colors.js';
 
 export interface ScheduledTask {
   (state: Record<string, any>): Promise<Record<string, any>>;
@@ -73,7 +74,7 @@ export class Scheduler {
   }
 
   async start(): Promise<void> {
-    console.log('[Scheduler] Starting scheduler...');
+    console.log(colorLog('Scheduler', 'Starting scheduler...'));
 
     // Schedule daily tasks
     const [hour, minute] = this.scheduleTime.split(':').map(Number);
@@ -105,7 +106,7 @@ export class Scheduler {
       this.jobs.push(weeklyJob);
     }
 
-    console.log('[Scheduler] Scheduler started');
+    console.log(colorLog('Scheduler', 'Scheduler started'));
 
     // Keep the scheduler running
     return new Promise(() => {

@@ -365,10 +365,6 @@ function app() {
     },
 
     async saveConfig() {
-      if (!confirm('确定保存配置吗？配置会自动重新加载，无需重启应用。')) {
-        return;
-      }
-
       this.configSaving = true;
       try {
         const res = await fetch('/api/config', {
@@ -379,7 +375,7 @@ function app() {
 
         if (res.ok) {
           const data = await res.json();
-          alert('✅ ' + (data.message || '保存成功') + '\n\n配置已自动重新加载，立即生效！');
+          alert('✅ ' + (data.message || '保存成功'));
         } else {
           const error = await res.json();
           alert('保存失败：' + error.error);
@@ -451,6 +447,44 @@ function app() {
       const minutes = String(date.getMinutes()).padStart(2, '0');
       const seconds = String(date.getSeconds()).padStart(2, '0');
       return `${hours}:${minutes}:${seconds}`;
+    },
+
+    extractLogModule(message) {
+      const match = message.match(/\[([^\]]+)\]/);
+      return match ? `[${match[1]}]` : '';
+    },
+
+    extractLogContent(message) {
+      const match = message.match(/\[([^\]]+)\]\s*(.*)/);
+      return match ? match[2] : message;
+    },
+
+    getLogModuleColor(message) {
+      const module = this.extractLogModule(message);
+      const moduleColors = {
+        '[App]': 'text-cyan-400',
+        '[Main]': 'text-cyan-400',
+        '[Config]': 'text-green-400',
+        '[Web]': 'text-blue-400',
+        '[Database]': 'text-purple-400',
+        '[MemoryManager]': 'text-purple-400',
+        '[Scheduler]': 'text-yellow-400',
+        '[DreamTask]': 'text-yellow-400',
+        '[WeeklyReview]': 'text-yellow-400',
+        '[ProactiveChatTask]': 'text-orange-400',
+        '[TelegramBot]': 'text-blue-300',
+        '[DiscordBot]': 'text-indigo-400',
+        '[FeishuBot]': 'text-pink-400',
+        '[GPTClient]': 'text-lime-400',
+        '[ERROR]': 'text-red-500',
+      };
+      
+      for (const [key, color] of Object.entries(moduleColors)) {
+        if (module.includes(key)) {
+          return color;
+        }
+      }
+      return 'text-gray-400';
     }
   };
 }

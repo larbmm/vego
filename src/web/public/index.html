@@ -49,17 +49,17 @@
 <body class="bg-gray-100" x-data="app()" x-init="init()">
   
   <!-- Header -->
-  <div class="bg-blue-600 text-white p-4 shadow-lg flex items-center justify-between">
+  <div class="fixed top-0 left-0 right-0 bg-blue-600 text-white py-2 px-4 shadow-lg flex items-center justify-between z-50">
     <!-- 移动端菜单按钮 -->
     <button 
       @click="mobileMenuOpen = !mobileMenuOpen"
       class="md:hidden text-white focus:outline-none">
-      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
       </svg>
     </button>
-    <h1 class="text-xl md:text-2xl font-bold">🤖 Vego 管理面板</h1>
-    <div class="w-6 md:hidden"></div> <!-- 占位，保持标题居中 -->
+    <h1 class="text-lg md:text-xl font-bold">🤖 Vego 管理面板</h1>
+    <div class="w-5 md:hidden"></div> <!-- 占位，保持标题居中 -->
   </div>
 
   <!-- 移动端遮罩层 -->
@@ -69,7 +69,7 @@
     x-cloak
     class="mobile-overlay md:hidden"></div>
 
-  <div class="flex h-screen">
+  <div class="flex h-screen pt-10">
     
     <!-- Sidebar -->
     <div 
@@ -364,26 +364,17 @@
       </div>
 
       <!-- 配置管理 -->
-      <div x-show="currentView === 'config'" x-cloak x-init="if (currentView === 'config' && !configContent) loadConfig()">
+      <div x-show="currentView === 'config'" x-cloak x-init="loadConfig()">
         <div class="bg-white rounded-lg shadow p-4 md:p-6">
           <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
             <h2 class="text-xl md:text-2xl font-bold">配置管理</h2>
-            <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-              <button 
-                @click="loadConfig()"
-                :disabled="configLoading"
-                class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition disabled:bg-gray-400 text-sm">
-                <span x-show="!configLoading">🔄 重新加载</span>
-                <span x-show="configLoading">加载中...</span>
-              </button>
-              <button 
-                @click="saveConfig()"
-                :disabled="configSaving || configLoading"
-                class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition disabled:bg-gray-400 text-sm">
-                <span x-show="!configSaving">💾 保存配置</span>
-                <span x-show="configSaving">保存中...</span>
-              </button>
-            </div>
+            <button 
+              @click="saveConfig()"
+              :disabled="configSaving || configLoading"
+              class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition disabled:bg-gray-400 text-sm">
+              <span x-show="!configSaving">💾 保存配置</span>
+              <span x-show="configSaving">保存中...</span>
+            </button>
           </div>
 
           <div class="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
@@ -409,11 +400,12 @@
               class="w-full h-[400px] md:h-[600px] p-4 border rounded-lg font-mono text-xs md:text-sm bg-gray-50"
               placeholder="配置内容..."
               spellcheck="false"></textarea>
-            
-            <div class="mt-4 text-xs md:text-sm text-gray-600">
-              <details class="cursor-pointer">
-                <summary class="font-semibold mb-2">📖 配置说明</summary>
-                <div class="pl-4 space-y-2 mt-2">
+          </div>
+
+          <div class="mt-4 text-xs md:text-sm text-gray-600">
+            <details class="cursor-pointer">
+              <summary class="font-semibold mb-2">📖 配置说明</summary>
+              <div class="pl-4 space-y-2 mt-2">
                   <p><strong>[api]</strong> - API 配置</p>
                   <ul class="list-disc pl-6 space-y-1">
                     <li><code>key</code> - API 密钥</li>
@@ -452,9 +444,8 @@
                     <li><code>use_ai_judgment</code> - 是否使用 AI 判断</li>
                     <li><code>question_response_probability</code> - 问题回复概率</li>
                   </ul>
-                </div>
-              </details>
-            </div>
+              </div>
+            </details>
           </div>
         </div>
       </div>
@@ -624,7 +615,11 @@
                   }"
                   class="ml-2 font-bold"
                   x-text="'[' + log.level.toUpperCase() + ']'"></span>
-                <span class="ml-2" x-text="log.message"></span>
+                <span 
+                  :class="getLogModuleColor(log.message)"
+                  class="ml-2 font-semibold"
+                  x-text="extractLogModule(log.message)"></span>
+                <span class="ml-2 text-gray-300" x-text="extractLogContent(log.message)"></span>
               </div>
             </template>
             <div x-show="logs.length === 0" class="text-gray-500 text-center py-8">
