@@ -5,11 +5,22 @@ import { config } from '../config/config.js';
 
 const DEFAULT_TIMEOUT = 60000; // 60 seconds in milliseconds
 
+interface QueuedRequest {
+  userId: number;
+  userMessage: string;
+  conversationHistory: Array<{ role: string; content: string; created_at?: string }>;
+  isGroupChat: boolean;
+  resolve: (value: string) => void;
+  reject: (error: any) => void;
+}
+
 export class GPTClient {
   private client: OpenAI;
   private model: string;
   private memoryManager: MemoryManager;
   private workspace: WorkspaceLoader;
+  private requestQueue: QueuedRequest[] = [];
+  private isProcessing: boolean = false;
 
   constructor(
     memoryManager: MemoryManager,
@@ -65,6 +76,55 @@ export class GPTClient {
   }
 
   async chat(
+    userId: number,
+    userMessage: string,
+    conversationHistory: Array<{ role: string; content: string; created_at?: string }> = [],
+    isGroupChat: boolean = false
+  ): Promise<string> {
+    // 将请求加入队列
+    return new Promise((resolve, reject) => {
+      this.requestQueue.push({
+        userId,
+        userMessage,
+        conversationHistory,
+        isGroupChat,
+        resolve,
+        reject,
+      });
+      
+      // 如果没有正在处理的请求，开始处理队列
+      if (!this.isProcessing) {
+        this.processQueue();
+      }
+    });
+  }
+
+  private async processQueue(): Promise<void> {
+    if (this.requestQueue.length === 0) {
+      this.isProcessing = false;
+      return;
+    }
+
+    this.isProcessing = true;
+    const request = this.requestQueue.shift()!;
+
+    try {
+      const result = await this.executeChat(
+        request.userId,
+        request.userMessage,
+        request.conversationHistory,
+        request.isGroupChat
+      );
+      request.resolve(result);
+    } catch (error) {
+      request.reject(error);
+    }
+
+    // 处理下一个请求
+    this.processQueue();
+  }
+
+  private async executeChat(
     userId: number,
     userMessage: string,
     conversationHistory: Array<{ role: string; content: string; created_at?: string }> = [],
