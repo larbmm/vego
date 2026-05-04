@@ -91,7 +91,6 @@ export class DiscordBot {
         console.log(`  - isGuild: ${isGuild}`);
         console.log(`  - userId: ${userId}`);
         console.log(`  - channelId: ${channelId}`);
-        console.log(`  - content: ${msg.content.substring(0, 50)}...`);
         console.log(`  - channel type: ${msg.channel.type}`);
 
         // Check if message mentions this bot
@@ -222,10 +221,8 @@ export class DiscordBot {
 
         console.log(`[DiscordBot:${this.characterName}] Calling handler with user_id: ${message.user_id}`);
         const response = await this.handler(message);
-        console.log(`[DiscordBot:${this.characterName}] Got response: ${response.substring(0, 50)}...`);
         
         await msg.reply(response);
-        console.log(`[DiscordBot:${this.characterName}] Sent reply`);
 
         // Store bot's response in shared cache
         if (isGuild) {
