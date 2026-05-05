@@ -149,16 +149,24 @@ export class Character {
     }
 
     // 检查最近3条消息中是否有负面情绪（吵架、冷战等）
+    // 使用词边界匹配，避免误判（如"晚安"中的"不"）
     const negativeKeywords = [
-      '生气', '气', '烦', '讨厌', '不想', '算了', '随便', '无所谓', 
+      '生气', '烦', '讨厌', '不想', '算了', '随便', '无所谓', 
       '冷战', '吵架', '委屈', '难过', '伤心', '失望', '不理', '别说了',
-      '狠心', '过分', '太过', '受不了', '够了'
+      '狠心', '过分', '太过', '受不了', '够了', '生气了', '气死'
     ];
     
     const recentMessages = recentHistory.slice(-3); // 最近3条消息
-    const hasNegativeEmotion = recentMessages.some(msg => 
-      negativeKeywords.some(kw => msg.content.includes(kw))
-    );
+    const hasNegativeEmotion = recentMessages.some(msg => {
+      const content = msg.content;
+      // 排除常见的正常表达
+      const normalPhrases = ['晚安', '早安', '午安', '安好', '平安', '不客气', '不用谢', '不好意思'];
+      if (normalPhrases.some(phrase => content.includes(phrase))) {
+        return false;
+      }
+      // 检查是否包含负面关键词
+      return negativeKeywords.some(kw => content.includes(kw));
+    });
     
     // 如果有负面情绪，不跳过回复（可能需要安慰/解释）
     if (hasNegativeEmotion) {

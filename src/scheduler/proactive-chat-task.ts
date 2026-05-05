@@ -241,7 +241,7 @@ export class ProactiveChatTask {
       const message = await this.generateProactiveMessage(userId);
       
       await this.bot.telegram.sendMessage(telegramId, message);
-      console.info(`[ProactiveChatTask:${charName}] Sent proactive message: ${message}`);
+      console.info(`[ProactiveChatTask:${charName}] Sent proactive message`);
 
       // Save the proactive message to database
       if (this.character.memoryManager) {
